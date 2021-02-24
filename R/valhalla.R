@@ -15,15 +15,20 @@
 #'
 #' @return
 #' @export
-valhalla_route <- function(from = NA, to = NA, costing = "auto", unit = "kilometers", min_road_class = "residential"){
+valhalla_route <- function(from = NA, to = NA, costing = "auto", unit = "kilometers", min_road_class = "residential", minimum_reachability = 50){
+  # see API reference here
+  #https://valhalla.readthedocs.io/en/latest/api/turn-by-turn/api-reference/
+
   post_data <- list()
 
   post_data$locations <- from %>%
-    dplyr::select(lat, lon = lng) %>%
+    dplyr::select(lat, lon) %>% # = lng) %>%
     dplyr::bind_rows({
       to %>%
-        dplyr::select(lat, lon = lng)}
-    ) %>% bind_cols(tibble(search_filter = rep(list(list("min_road_class" = min_road_class)), 2)))
+        dplyr::select(lat, lon)} # = lng)}
+    ) %>%
+    bind_cols(tibble(search_filter = rep(list(list("min_road_class" = min_road_class)), 2)))
+
 
   post_data$costing = costing
   post_data$directions_options$units = unit
@@ -55,11 +60,15 @@ valhalla_route <- function(from = NA, to = NA, costing = "auto", unit = "kilomet
 # library(tidyverse)
 # to = tibble::tibble(lat=45.5, lng=-75)
 # from = tibble::tibble(lng = -75.84322, lat = 45.10085)
-# trip <- valhalla_route(from, to, min_road_class="residential")
 #
+# trip <- valhalla_route(from, to, min_road_class="residential")
 # print_trip(trip, all_details = TRUE)
 #
-
+# trip2 <- valhalla_route(from, to, min_road_class="motorway")
+# print_trip(trip2, all_details = TRUE)
+#
+# #
+#
 
 #' Decode Valhalla Route Shape
 #'
@@ -142,13 +151,13 @@ decode <- function(encoded) {
 #' @export
 #'
 #' @examples
-sources_to_targets <- function(froms, tos, costing = "auto", chunk_size = 1){
+sources_to_targets <- function(froms, tos, costing = "auto", chunk_size = 1, min_road_class = "residential"){
 
 
   test_make <- list()
 
-  test_make$sources = froms
-  test_make$targets = tos
+  test_make$sources = froms %>% bind_cols(tibble(search_filter = rep(list(list("min_road_class" = min_road_class)), nrow(froms))))
+  test_make$targets = tos %>% bind_cols(tibble(search_filter = rep(list(list("min_road_class" = min_road_class)), nrow(tos))))
   test_make$costing = costing#"pedestrian"
 
 
@@ -177,9 +186,41 @@ sources_to_targets <- function(froms, tos, costing = "auto", chunk_size = 1){
 
 }
 
+#
+# # # ## TESTING BAD FORM
+# library(tidyverse)
+# library(valhallr)
+# library(sf)
+#
+# tos = tibble::tibble(lat=45.5, lon=-75)
+# froms = tibble::tibble(lon = -75.84322, lat = 45.10085)
+#
+# od <- sources_to_targets(froms, tos, min_road_class="residential")
+# od
+#
+# od2 <- sources_to_targets(froms, tos, min_road_class="service_other")
+# od2
+#
+# trip_res <- valhalla_route(froms, tos)
+# print_trip(trip_res)
+#
+# trip_svc <- valhalla_route(froms, tos, min_road_class = "service_other")
+# print_trip(trip_svc)
+#
+# trip_mw <- valhalla_route(froms, tos, min_road_class="motorway")
+# print_trip(trip2, all_details = TRUE)
+#
+# map_trip(trip_svc)
+# map_trip(trip_res)
+#
+# # # #
+#
 
 
-#' Title
+
+
+
+#' Print Trip Summary and Turn-By-Turn Directions
 #'
 #' @param trip
 #' @param all_details
@@ -219,3 +260,27 @@ print_trip <- function(trip, all_details = FALSE) {
 # test
 #
 # valhalla_route(from %>% rename(lng = 2), tos[1,] %>% rename(lng = 2))
+
+
+
+
+#' Make a Leaflet Map from a Trip
+#'
+#' @param trip
+#'
+#' @return
+#' @export
+#'
+#' @examples
+map_trip <- function(trip){
+
+  ## decode and turn into a sf line
+  decode(trip$legs$shape) %>%
+    st_as_sf(coords = c("lng", "lat"), crs = "WGS84")  %>%
+    summarise(do_union = FALSE) %>%
+    st_cast("LINESTRING") %>%
+    # then plot with leaflet
+    leaflet::leaflet() %>%
+    leaflet::addTiles() %>%
+    leaflet::addPolylines()
+}
