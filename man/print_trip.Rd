@@ -2,7 +2,7 @@
 % Please edit documentation in R/valhalla.R
 \name{print_trip}
 \alias{print_trip}
-\title{Title}
+\title{Print Trip Summary and Turn-By-Turn Directions}
 \usage{
 print_trip(trip, all_details = FALSE)
 }
@@ -13,5 +13,5 @@ print_trip(trip, all_details = FALSE)
 
 }
 \description{
-Title
+Print Trip Summary and Turn-By-Turn Directions
 }

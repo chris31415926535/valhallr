@@ -4,7 +4,13 @@
 \alias{sources_to_targets}
 \title{Source-to-Targets Origin/Destination Matrices with Valhalla}
 \usage{
-sources_to_targets(froms, tos, costing = "auto", chunk_size = 1)
+sources_to_targets(
+  froms,
+  tos,
+  costing = "auto",
+  chunk_size = 1,
+  min_road_class = "residential"
+)
 }
 \arguments{
 \item{chunk_size}{}
