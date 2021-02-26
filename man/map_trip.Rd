@@ -4,10 +4,10 @@
 \alias{map_trip}
 \title{Make a Leaflet Map from a Trip}
 \usage{
-map_trip(trip)
+map_trip(trip, method = "leaflet")
 }
 \arguments{
-\item{trip}{}
+\item{method}{Which mapping service to use. Defaults to leaflet; also can use ggplot.}
 }
 \value{
 

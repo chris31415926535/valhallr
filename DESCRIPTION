@@ -18,7 +18,8 @@ Imports:
     tibble,
     tidyr,
     sf,
-    leaflet
+    leaflet,
+    ggplot2
 RoxygenNote: 7.1.1
 URL: https://github.com/chris31415926535/valhallr
 BugReports: https://github.com/chris31415926535/valhallr/issues

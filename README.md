@@ -7,49 +7,122 @@
 
 <!-- badges: end -->
 
-The goal of valhallr is to …
+This package provides an R-native interface to the Valhalla routing
+engine’s API.
 
-## Installation
+  - [API
+    Documentation](https://valhalla.readthedocs.io/en/latest/api/turn-by-turn/api-reference/)
 
-You can install the released version of valhallr from
-[CRAN](https://CRAN.R-project.org) with:
+# Extremely Experimental\!
 
-``` r
-install.packages("valhallr")
-```
+This library is under active development and extremely experimental.
+Many things work but lots don’t, there’s little input validation, the
+API wrappers are not up to best practicesc yet, the documentation is a
+work in progress, and you can expect functions and parameters to change.
 
-## Example
+# Examples
 
-This is a basic example which shows you how to solve a common problem:
+## Turn-by-turn directions
+
+This example shows how we can easily get turn-by-turn driving directions
+using many default parameters. Here’s a driving trip from the University
+of Ottawa to the Canadian Tire Centre (an arena across town).
 
 ``` r
 library(valhallr)
-## basic example code
+library(magrittr)
+library(dplyr)
+library(tibble)
+library(tidyr)
+
+origin <- valhallr::test_data("uottawa")
+destination <- valhallr::test_data("cdntirecentre")
+
+trip <- valhallr::valhalla_route(from = origin, to = destination)
+
+valhallr::print_trip(trip, all_details = TRUE)
+#> From lat/lng: 45.4234, -75.6832
+#> To   lat/lng: 45.2975, -75.9279
+#> Time: 19.9 minutes
+#> Dist: 28.693 km
+#> Step 1: Drive northwest on Copernicus Street.
+#>    Dist: 0.17 km
+#>    Time: 0.35 minutes
+#> Step 2: Turn right onto Laurier Avenue East/48.
+#>    Dist: 0.08 km
+#>    Time: 0.19 minutes
+#> Step 3: Turn right onto King Edward Avenue.
+#>    Dist: 0.77 km
+#>    Time: 1.38 minutes
+#> Step 4: Turn right onto Greenfield Avenue.
+#>    Dist: 0.20 km
+#>    Time: 0.23 minutes
+#> Step 5: Turn left to take the 417 ramp.
+#>    Dist: 24.97 km
+#>    Time: 15.09 minutes
+#> Step 6: Take exit 142 on the right onto 88/Palladium Drive.
+#>    Dist: 0.73 km
+#>    Time: 0.73 minutes
+#> Step 7: Turn left onto Palladium Drive/88.
+#>    Dist: 1.35 km
+#>    Time: 1.34 minutes
+#> Step 8: Turn left onto Huntmar Drive.
+#>    Dist: 0.21 km
+#>    Time: 0.35 minutes
+#> Step 9: Turn right onto Cyclone Taylor Boulevard.
+#>    Dist: 0.21 km
+#>    Time: 0.24 minutes
+#> Step 10: Your destination is on the right.
+#>    Dist: 0.00 km
+#>    Time: 0.00 minutes
 ```
 
-What is special about using `README.Rmd` instead of just `README.md`?
-You can include R chunks like so:
+## Mapping turn-by-turn routes
+
+And we can decode the API’s encoded shapefile and map our turn-by-turn
+trip with the convenience function `valhallr::map_trip()`. Leaflet and
+ggplot are both supported; here we’ll use ggplot since GitHub documents
+seem not to support embedded HTML Leaflet maps.
 
 ``` r
-summary(cars)
-#>      speed           dist       
-#>  Min.   : 4.0   Min.   :  2.00  
-#>  1st Qu.:12.0   1st Qu.: 26.00  
-#>  Median :15.0   Median : 36.00  
-#>  Mean   :15.4   Mean   : 42.98  
-#>  3rd Qu.:19.0   3rd Qu.: 56.00  
-#>  Max.   :25.0   Max.   :120.00
+valhallr::map_trip(trip, method = "ggplot")
 ```
 
-You’ll still need to render `README.Rmd` regularly, to keep `README.md`
-up-to-date. `devtools::build_readme()` is handy for this. You could also
-use GitHub Actions to re-render `README.Rmd` every time you push. An
-example workflow can be found here:
-<https://github.com/r-lib/actions/tree/master/examples>.
+<img src="man/figures/README-unnamed-chunk-3-1.png" width="100%" />
 
-You can also embed plots, for example:
+## Origin-Destination analyses
 
-<img src="man/figures/README-pressure-1.png" width="100%" />
+There is also some basic support for origin-destination (OD) analyses
+using Valhalla’s `sources_to_targets` method. You can either call the
+method directly with `valhallr::sources_to_targets()`, or else use
+`valhallr::od_matrix()` which has some convenience features like
+human-readable name columns.
 
-In that case, don’t forget to commit and push the resulting figure
-files, so they display on GitHub and CRAN.
+``` r
+origins <- bind_rows(test_data("uottawa"), test_data("cntower"))
+destinations <- bind_rows(test_data("cdntirecentre"), test_data("parliament"))
+
+od <- valhallr::od_matrix(froms = origins, 
+                          from_id_col = "name", 
+                          tos = destinations, 
+                          to_id_col = "name",
+                          costing = "auto",
+                          batch_size = 100,
+                          minimum_reachability = 500)
+
+od %>%
+  mutate(time = time / 3600,
+         time = round(time, digits = 2)) %>%
+  knitr::kable(col.names = c("Origin", "Destination", "Distance (km)", "Time (h)"))
+```
+
+| Origin  | Destination   | Distance (km) | Time (h) |
+| :------ | :------------ | ------------: | -------: |
+| uottawa | cdntirecentre |        28.693 |     0.33 |
+| uottawa | parliament    |         1.850 |     0.05 |
+| cntower | cdntirecentre |       389.276 |     4.43 |
+| cntower | parliament    |       454.637 |     4.61 |
+
+## Installation
+
+You can install the developer version from GitHub.

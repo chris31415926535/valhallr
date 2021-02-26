@@ -260,6 +260,17 @@ od_matrix <- function(froms, from_id_col, tos, to_id_col, costing, batch_size, m
     select(to_id_col) %>%
     rowid_to_column(var = "to_index")
 
+  # if human-readable column names are identical, append "_from" and "_to" so they differ
+  if (from_id_col == to_id_col) {
+    new_from <- paste0(from_id_col,"_from")
+    from_names <- rename(from_names, !!(new_from) := from_id_col)
+    from_id_col <- new_from
+
+    new_to <- paste0(to_id_col, "_to")
+    to_names <- rename(to_names, !!(new_to) := to_id_col)
+    to_id_col <- new_to
+  }
+
   # set up our batching
   n_iters <- nrow(froms) %/% batch_size + 1
   results <- list(rep(NA, n_iters))
@@ -383,18 +394,30 @@ print_trip <- function(trip, all_details = FALSE) {
 #' Make a Leaflet Map from a Trip
 #'
 #' @param trip
+#' @param method Which mapping service to use. Defaults to leaflet; also can use ggplot.
 #'
 #' @return
 #' @export
-map_trip <- function(trip){
+map_trip <- function(trip, method = "leaflet"){
 
   ## decode and turn into a sf line
-  valhallr::decode(trip$legs$shape) %>%
+  trip_shp <- valhallr::decode(trip$legs$shape) %>%
     sf::st_as_sf(coords = c("lng", "lat"), crs = "WGS84")  %>%
     dplyr::summarise(do_union = FALSE) %>%
-    sf::st_cast("LINESTRING") %>%
-    # then plot with leaflet
-    leaflet::leaflet() %>%
-    leaflet::addTiles() %>%
-    leaflet::addPolylines()
+    sf::st_cast("LINESTRING")
+
+  # then plot with leaflet
+  if (method == "leaflet"){
+    trip_shp %>%
+      leaflet::leaflet() %>%
+      leaflet::addTiles() %>%
+      leaflet::addPolylines()
+  }
+
+  if (method == "ggplot"){
+    trip_shp %>%
+      ggplot2::ggplot() +
+      ggplot2::geom_sf()
+
+  }
 }
