@@ -16,5 +16,7 @@ Imports:
     dplyr,
     magrittr,
     tibble,
-    tidyr
+    tidyr,
+    sf,
+    leaflet
 RoxygenNote: 7.1.1

@@ -9,7 +9,8 @@ valhalla_route(
   to = NA,
   costing = "auto",
   unit = "kilometers",
-  min_road_class = "residential"
+  min_road_class = "residential",
+  minimum_reachability = 50
 )
 }
 \arguments{

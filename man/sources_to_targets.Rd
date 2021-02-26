@@ -9,7 +9,8 @@ sources_to_targets(
   tos,
   costing = "auto",
   chunk_size = 1,
-  min_road_class = "residential"
+  min_road_class = "residential",
+  minimum_reachability = 50
 )
 }
 \arguments{

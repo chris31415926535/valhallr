@@ -1,5 +1,39 @@
 
 
+#' Get Lat/Lon Coordinates for Testing
+#'
+#' This function gives quick access to lat/lon coordinates for a few points
+#' around Ontario for testing and benchmarking purposes.
+#'
+#' @return A one-row tibble with a location's name, latitude, and longitude.
+#' @export
+test_data <- function(dataset){
+  result <- tibble::tibble()
+  dataset <- tolower(dataset)
+
+  datasets <- tibble::tribble(~name, ~lat, ~lon,
+                              "myhouse", 45.380738, -75.665578,
+                              "uottawa", 45.423382, -75.683170,
+                              "parliament", 45.424774, -75.699473,
+                              "cntower", 43.642748, -79.386602,
+                              "portagestore", 45.534769, -78.707470,
+                              "cdntirecentre", 45.297533, -75.927875,
+                              "zwicksisland", 44.153853, -77.387684,
+                              "bignickel", 46.473435, -81.033971,
+                              "kenora", 49.765876, -94.487444,
+                              "killarney", 46.012289, -81.401437)
+
+  result <- dplyr::filter(datasets, name == dataset)
+
+  if (nrow(result) == 0){
+    stop(paste0("Please specify a test dataset. Possible values are: ",
+                stringr::str_flatten(datasets$name, collapse = ", ")))
+  }
+
+  return(result)
+
+}
+
 
 #' Point-to-Point Routing with Valhalla
 #'
@@ -27,7 +61,8 @@ valhalla_route <- function(from = NA, to = NA, costing = "auto", unit = "kilomet
       to %>%
         dplyr::select(lat, lon)} # = lng)}
     ) %>%
-    bind_cols(tibble(search_filter = rep(list(list("min_road_class" = min_road_class)), 2)))
+    dplyr::bind_cols(tibble::tibble(search_filter = rep(list(list("min_road_class" = min_road_class)), 2))) %>%
+    dplyr::bind_cols(tibble::tibble(minimum_reachability = rep(minimum_reachability, 2) ))
 
 
   post_data$costing = costing
@@ -149,32 +184,20 @@ decode <- function(encoded) {
 #'
 #' @return
 #' @export
-#'
-#' @examples
-sources_to_targets <- function(froms, tos, costing = "auto", chunk_size = 1, min_road_class = "residential"){
+sources_to_targets <- function(froms, tos, costing = "auto", chunk_size = 1, min_road_class = "residential", minimum_reachability = 50){
 
 
   test_make <- list()
 
-  test_make$sources = froms %>% bind_cols(tibble(search_filter = rep(list(list("min_road_class" = min_road_class)), nrow(froms))))
-  test_make$targets = tos %>% bind_cols(tibble(search_filter = rep(list(list("min_road_class" = min_road_class)), nrow(tos))))
-  test_make$costing = costing#"pedestrian"
+  test_make$sources = froms %>% bind_cols(tibble(search_filter = rep(list(list("min_road_class" = min_road_class)), nrow(froms)))) %>%
+    bind_cols(tibble(minimum_reachability = rep(minimum_reachability, nrow(froms)) ))
 
+  test_make$targets = tos %>% bind_cols(tibble(search_filter = rep(list(list("min_road_class" = min_road_class)), nrow(tos)))) %>%
+    bind_cols(tibble(minimum_reachability = rep(minimum_reachability, nrow(tos)) ))
 
-  ## HYOPTHESIS: the qgis plugin works for pedestrians by running one-to-many over and over and over
-
-  #test_make %>% jsonlite::toJSON() %>% nchar()
-  #jsontext <-   '{"sources":[{"lat":45.409,"lon":-75.7099},{"lat":45.4414,"lon":-76.353},{"lat":45.4414,"lon":-76.353},{"lat":45.4414,"lon":-76.353},{"lat":45.2291,"lon":-76.1875}], "targets":[{"lat":45.4344,"lon":-76.3532},{"lat":45.4414,"lon":-76.353},{"lat":45.4414,"lon":-76.353},{"lat":45.4344,"lon":-76.3532},{"lat":45.4414,"lon":-76.353}],"costing":"pedestrian"}'
-  #resp <- httr::POST(url = "http://localhost:8002/sources_to_targets", body = jsontext)
-
+  test_make$costing = costing
 
   resp2 <- httr::POST(url = "http://localhost:8002/sources_to_targets", body = test_make %>% jsonlite::toJSON(auto_unbox = TRUE))
-
-  # resp %>%
-  #   httr::content(type = "text") %>%
-  #   jsonlite::fromJSON()
-
-  #{"sources":[{"lat":40.744014,"lon":-73.990508},{"lat":40.739735,"lon":-73.979713},{"lat":40.752522,"lon":-73.985015},{"lat":40.750117,"lon":-73.983704},{"lat":40.750552,"lon":-73.993519}],"targets":[{"lat":40.744014,"lon":-73.990508},{"lat":40.739735,"lon":-73.979713},{"lat":40.752522,"lon":-73.985015},{"lat":40.750117,"lon":-73.983704},{"lat":40.750552,"lon":-73.993519}],"costing":"pedestrian"}&id=ManyToMany_NYC_work_dinner
 
   matrix <- resp2 %>% httr::content(type = "text") %>%
     jsonlite::fromJSON()
@@ -184,6 +207,99 @@ sources_to_targets <- function(froms, tos, costing = "auto", chunk_size = 1, min
     dplyr::select(-name) %>%
     tidyr::unnest(cols = value)
 
+}
+
+
+
+#' Generate Tidy Origin-Destination Data using Valhalla
+#'
+#' @description This function creates a tidy (i.e. long) tibble of
+#'   origin-destination trip data using the Valhalla routing engine. For a set
+#'   of o origins and d destinations, it returns a tibble with (o x d) rows with
+#'   the travel distance and time between each pair. It can handle several
+#'   different travel modes and routing options.
+#'
+#'   This function calls `valhalla::sources_to_targets()`, which interacts with
+#'   the Valhalla API directly, but offers several user-friendly features.
+#'
+#'   * You can specify human-readable indices with `from_id_col` and
+#'   `to_id_col`. (Valhalla's API only returns zero-indexed integer
+#'   identifiers.)
+#'   * You can specify a `batch_size` to break computation into
+#'   several smaller API calls, to prevent your Valhalla instance from running
+#'   out of memory. This seems especially important for pedestrian routing,
+#'   where I've sometimes needed to use a batch size as small as 5.
+#'
+#'
+#' @param froms A tibble containing origin locations in columns named `lat` and
+#'   `lon`, and an optional column with human-readable names.
+#' @param from_id_col The name of the column in `froms` that contains
+#'   human-readable names.
+#' @param tos A tibble containing destination locations in columns named `lat`
+#'   and `lon`, and an optional column with human-readable names.
+#' @param to_id_col The name of the column in `tos` that contains human-readable
+#'   names.
+#' @param costing The travel costing method: at present "auto" and "pedestrian"
+#'   are supported.
+#' @param batch_size The number of origin points to process per API call.
+#' @param minimum_reachability The minimum number of nodes a candidate network
+#'   needs to have before it is included. Try increasing this value (e.g. to
+#'   500) if Valhalla is getting stuck in small disconnected road networks.
+#'
+#' @return
+#' @export
+od_matrix <- function(froms, from_id_col, tos, to_id_col, costing, batch_size, minimum_reachability){
+  # FIXME TODO: do input validation!!
+
+  # get the human-readable names of the from- and to-data
+  from_names <- froms %>%
+    select(from_id_col) %>%
+    rowid_to_column(var = "from_index")
+
+  to_names <- tos %>%
+    select(to_id_col) %>%
+    rowid_to_column(var = "to_index")
+
+  # set up our batching
+  n_iters <- nrow(froms) %/% batch_size + 1
+  results <- list(rep(NA, n_iters))
+
+  # do each batch
+  for (i in 1:n_iters){
+    message(paste0(i,"/",n_iters))
+    start_index <- (i-1)*batch_size + 1
+    end_index <- min( (i*batch_size), nrow(froms))
+
+    froms_iter = froms[start_index:end_index, ] %>%
+      drop_na()
+    od <- valhallr::sources_to_targets(froms= froms_iter, tos = tos, costing = costing, minimum_reachability = minimum_reachability)
+
+    # FIXME TODO: confirm that sources_to_targets gave us meaningful data!
+
+    # make start_index match the original DB row number and doc row number
+    od <- od %>%
+      mutate(from_index = from_index + start_index,
+             to_index = to_index + 1) %>%
+      left_join(from_names, by = "from_index") %>%
+      left_join(to_names, by = "to_index") %>%
+      select(-to_index, -from_index)
+
+    # add results to our pre-built list
+    results[[i]] <- od
+
+  }
+
+  # get results back into a tibble
+  output <- results %>%
+    enframe() %>%
+    unnest(value) %>%
+    select(from_id_col, to_id_col, distance, time)
+
+  return(output)
+  #
+#   output  %>%
+#     select(from_id_col, to_id_col, distance, time) %>%
+#     write_csv(paste0("data/valhalla_matrix_",costing,"_target.csv"))
 }
 
 #
@@ -270,15 +386,13 @@ print_trip <- function(trip, all_details = FALSE) {
 #'
 #' @return
 #' @export
-#'
-#' @examples
 map_trip <- function(trip){
 
   ## decode and turn into a sf line
-  decode(trip$legs$shape) %>%
-    st_as_sf(coords = c("lng", "lat"), crs = "WGS84")  %>%
-    summarise(do_union = FALSE) %>%
-    st_cast("LINESTRING") %>%
+  valhallr::decode(trip$legs$shape) %>%
+    sf::st_as_sf(coords = c("lng", "lat"), crs = "WGS84")  %>%
+    dplyr::summarise(do_union = FALSE) %>%
+    sf::st_cast("LINESTRING") %>%
     # then plot with leaflet
     leaflet::leaflet() %>%
     leaflet::addTiles() %>%
