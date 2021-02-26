@@ -80,6 +80,28 @@ od %>%
 
 ```
 
+## Isochrones
+
+There is also a rudimentary function `valhallr::isochrone()` for generating isochrones, which are polygons showing how far you can travel in a given time from a given location. You specify a lat/lon origin in a tibble, and it returns an `sf` object with the according polygons.
+
+This simple example shows how to generate 5, 10, and 15-minute walking isochrones:
+
+```{r, message = FALSE, warning = FALSE}
+library(sf)
+
+origin <- valhallr::test_data("myhouse")
+
+isochrones <- valhallr::isochrone(from = origin)
+
+isochrones
+
+```
+
+There's also a simple function to map them via Leaflet or ggplot:
+
+```{r, message = FALSE, warning = FALSE}
+valhallr::map_isochrone(isochrones, method = "ggplot")
+```
 
 
 ## Installation

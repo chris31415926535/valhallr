@@ -421,3 +421,97 @@ map_trip <- function(trip, method = "leaflet"){
 
   }
 }
+
+
+#' Generate isochrones
+#'
+#' @param from
+#' @param costing
+#' @param contours_time
+#' @param min_road_class
+#' @param minimum_reachability
+#'
+#' @return
+#' @export
+#'
+#' @examples
+isochrone <- function(from, costing = "pedestrian", contours_time = c(5, 10, 15), min_road_class = "residential", minimum_reachability = 500){
+  # see API reference here
+  #https://valhalla.readthedocs.io/en/latest/api/turn-by-turn/api-reference/
+
+  post_data <- list()
+
+  post_data$locations <- from %>%
+    dplyr::select(lat, lon) #%>%
+    #dplyr::bind_cols(tibble::tibble(search_filter =list("min_road_class" = min_road_class))) %>%
+    #dplyr::bind_cols(tibble::tibble(minimum_reachability = minimum_reachability ))
+
+
+  post_data$costing <- costing
+
+  # FIXME handle colours better and multiple contours!!
+  post_data$contours <-  tibble::tibble(time = contours_time)
+
+  post_data$polygons <- TRUE
+
+
+  post_json <- post_data %>%
+    jsonlite::toJSON(auto_unbox = TRUE)
+
+  #post_json <- '{"locations":[{"lat":45.380738,"lon":-75.665578}],"costing":"pedestrian","contours":[{"time":15,"color":"ff0000"}]}'
+
+  resp <- httr::POST(url = "http://localhost:8002/isochrone", body = post_json)
+
+  resp_data <- resp %>%
+    httr::content(type = "text") %>%
+    geojsonio::geojson_sf() %>%
+    tibble::as_tibble() %>%
+    sf::st_as_sf()
+
+  return (resp_data)
+
+}
+
+
+
+#' Generate maps of isochrones
+#'
+#' @param isochrome
+#' @param method
+#'
+#' @return
+#' @export
+#'
+#' @examples
+map_isochrone <- function(isochrone, method = "leaflet") {
+
+  metric_name <- "ERROR: METRIC NOT DETECTED"
+  output <- "ERROR: Please supply method leaflet or ggplot."
+  if (isochrone$metric[[1]] == "time") metric_name <- "Minutes"
+  if (isochrone$metric[[1]] == "distance") metric_name <- "Kilometres"
+
+  if (method == "leaflet"){
+
+    iso_labels <- paste0(isochrone$contour, " ", metric_name) %>%
+      purrr::map(htmltools::HTML)
+
+    output <- isochrone %>%
+      leaflet::leaflet() %>%
+      leaflet::addTiles() %>%
+      leaflet::addPolygons(fillColor = ~ color,
+                           label = iso_labels)
+  }
+
+  if (method == "ggplot"){
+    output <- isochrone %>%
+      tibble::as_tibble() %>%
+      sf::st_as_sf() %>%
+      ggplot2::ggplot() +
+      ggspatial::annotation_map_tile() +
+      ggplot2::geom_sf(ggplot2::aes(fill = contour),
+                       alpha = 0.3) +
+      ggplot2::labs(fill = metric_name)
+  }
+
+  return(output)
+}

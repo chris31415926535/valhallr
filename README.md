@@ -123,6 +123,46 @@ od %>%
 | cntower | cdntirecentre |       389.276 |     4.43 |
 | cntower | parliament    |       454.637 |     4.61 |
 
+## Isochrones
+
+There is also a rudimentary function `valhallr::isochrone()` for
+generating isochrones, which are polygons showing how far you can travel
+in a given time from a given location. You specify a lat/lon origin in a
+tibble, and it returns an `sf` object with the according polygons.
+
+This simple example shows how to generate 5, 10, and 15-minute walking
+isochrones:
+
+``` r
+library(sf)
+
+origin <- valhallr::test_data("myhouse")
+
+isochrones <- valhallr::isochrone(from = origin)
+
+isochrones
+#> Simple feature collection with 3 features and 8 fields
+#> geometry type:  POLYGON
+#> dimension:      XY
+#> bbox:           xmin: -75.67904 ymin: 45.37081 xmax: -75.6507 ymax: 45.38982
+#> geographic CRS: WGS 84
+#> # A tibble: 3 x 9
+#>   fill  fillOpacity fill.opacity fillColor color contour opacity metric
+#>   <chr>       <dbl>        <dbl> <chr>     <chr>   <int>   <dbl> <chr> 
+#> 1 #bf4~        0.33         0.33 #bf4040   #bf4~      15    0.33 time  
+#> 2 #bfa~        0.33         0.33 #bfaa40   #bfa~      10    0.33 time  
+#> 3 #6ab~        0.33         0.33 #6abf40   #6ab~       5    0.33 time  
+#> # ... with 1 more variable: geometry <POLYGON [°]>
+```
+
+There’s also a simple function to map them via Leaflet or ggplot:
+
+``` r
+valhallr::map_isochrone(isochrones, method = "ggplot")
+```
+
+<img src="man/figures/README-unnamed-chunk-6-1.png" width="100%" />
+
 ## Installation
 
 You can install the developer version from GitHub.
