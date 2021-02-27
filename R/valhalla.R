@@ -3,13 +3,14 @@
 #' Get Lat/Lon Coordinates for Testing
 #'
 #' This function gives quick access to lat/lon coordinates for a few points
-#' around Ontario for testing and benchmarking purposes.
+#' around Ontario for testing and benchmarking purposes. The data sets will vary;
+#' for a list, call the function with no value.
+#'
+#' @param dataset The name of a test dataset.
 #'
 #' @return A one-row tibble with a location's name, latitude, and longitude.
 #' @export
-test_data <- function(dataset){
-  result <- tibble::tibble()
-  dataset <- tolower(dataset)
+test_data <- function(dataset = NA){
 
   datasets <- tibble::tribble(~name, ~lat, ~lon,
                               "myhouse", 45.380738, -75.665578,
@@ -23,7 +24,15 @@ test_data <- function(dataset){
                               "kenora", 49.765876, -94.487444,
                               "killarney", 46.012289, -81.401437)
 
-  result <- dplyr::filter(datasets, name == dataset)
+  if (is.na(dataset)){
+    stop(paste0("Please specify a test dataset. Possible values are: ",
+                stringr::str_flatten(datasets$name, collapse = ", ")))
+  }
+
+  result <- tibble::tibble()
+  dataset <- tolower(dataset)
+
+  result <- datasets[datasets$name == dataset,] #dplyr::filter(datasets, name == dataset)
 
   if (nrow(result) == 0){
     stop(paste0("Please specify a test dataset. Possible values are: ",
@@ -42,12 +51,18 @@ test_data <- function(dataset){
 #'
 #' It does no input validation, no error handling, nothing. Use at own risk.
 #'
-#' @param from
-#' @param to
-#' @param costing
-#' @param unit
-#'
-#' @return
+#' @param from A tibble containing one origin location in columns named `lat` and
+#'   `lon`.
+#' @param to A tibble containing one destination location in columns named `lat` and
+#'   `lon`.
+#' @param costing The travel costing method: at present "auto" and "pedestrian"
+#'   are supported.
+#' @param unit Distance measurement units. Defaults to "kilometres".
+#' @param min_road_class The minimum road classification Valhalla will consider. Defaults to `residential`.
+#' @param minimum_reachability The minimum number of nodes a candidate network
+#'   needs to have before it is included. Try increasing this value (e.g. to
+#'   500) if Valhalla is getting stuck in small disconnected road networks.
+#' @return A trip object. (TODO! This could be an S3 object.)
 #' @export
 route <- function(from = NA, to = NA, costing = "auto", unit = "kilometers", min_road_class = "residential", minimum_reachability = 50){
   # see API reference here
@@ -56,10 +71,10 @@ route <- function(from = NA, to = NA, costing = "auto", unit = "kilometers", min
   post_data <- list()
 
   post_data$locations <- from %>%
-    dplyr::select(lat, lon) %>% # = lng) %>%
+    dplyr::select("lat", "lon") %>% # = lng) %>%
     dplyr::bind_rows({
       to %>%
-        dplyr::select(lat, lon)} # = lng)}
+        dplyr::select("lat", "lon")} # = lng)}
     ) %>%
     dplyr::bind_cols(tibble::tibble(search_filter = rep(list(list("min_road_class" = min_road_class)), 2))) %>%
     dplyr::bind_cols(tibble::tibble(minimum_reachability = rep(minimum_reachability, 2) ))
@@ -76,7 +91,7 @@ route <- function(from = NA, to = NA, costing = "auto", unit = "kilometers", min
   if (httr::http_type(resp) != "application/json") stop ("API did not return json.", call. = FALSE)
 
 
-  resp_data <- jsonlite::fromJSON(httr::content(resp, type = "text"), encoding = "UTF-8")
+  resp_data <- jsonlite::fromJSON(httr::content(resp, type = "text", encoding = "UTF-8"))
 
   resp_data %>%
     purrr::pluck(1)
@@ -85,30 +100,23 @@ route <- function(from = NA, to = NA, costing = "auto", unit = "kilometers", min
 
 
 }
-#
-#
-# # ## TESTING BAD FORM
-# library(tidyverse)
-# to = tibble::tibble(lat=45.5, lng=-75)
-# from = tibble::tibble(lng = -75.84322, lat = 45.10085)
-#
-# trip <- valhalla_route(from, to, min_road_class="residential")
-# print_trip(trip, all_details = TRUE)
-#
-# trip2 <- valhalla_route(from, to, min_road_class="motorway")
-# print_trip(trip2, all_details = TRUE)
-#
-# #
-#
+
+
 
 #' Decode Valhalla Route Shape
 #'
-#' @param encoded
+#' For point-to-point routing, Valhalla's API provides a route shapefile in a
+#' special ASCII-encoded format. This function takes an encoded string, decodes
+#' it, and returns the lat/lon coordinates as a tibble.
 #'
-#' @return
+#' To map the results, see also `valhallr::map_trip()`.
+#'
+#' @param encoded An encoded shapefile in ASCII format from Valhalla's API.
+#'
+#' @return A tibble containing point locations in `lat` and `lon` columns.
 #' @export
 decode <- function(encoded) {
-  # got algorithm from here https://valhalla.readthedocs.io/en/latest/decoding/
+  # got algorithm from here (but I wrote the R version) https://valhalla.readthedocs.io/en/latest/decoding/
   chars <- stringr::str_split(encoded, "")[[1]]
 
   lats <- vector(mode = "integer", length = 1)
@@ -174,26 +182,30 @@ decode <- function(encoded) {
 #'
 #' HIGHLY EXPERIMENTAL AND UNDER DEVELOPMENT. NOT EVEN CLOSE TO DONE.
 #'
-#' @param froms
-#' @param tos
-#' @param costing
-#' @param min_road_class
+#' @param froms A tibble containing origin locations in columns named `lat` and
+#'   `lon`.
+#' @param tos A tibble containing destination locations in columns named `lat` and
+#'   `lon`.
+#' @param costing The travel costing method: at present "auto" and "pedestrian"
+#'   are supported.
+#' @param min_road_class The minimum road classification Valhalla will consider. Defaults to `residential`.
 #' @param minimum_reachability The minimum number of nodes a candidate network
 #'   needs to have before it is included. Try increasing this value (e.g. to
 #'   500) if Valhalla is getting stuck in small disconnected road networks.
 #'
-#' @return
+#' @return A tibble showing the trip distances and times from each origin to each destination.
 #' @export
 sources_to_targets <- function(froms, tos, costing = "auto", min_road_class = "residential", minimum_reachability = 50){
 
-
   post_data <- list()
 
-  post_data$sources = froms %>% bind_cols(tibble(search_filter = rep(list(list("min_road_class" = min_road_class)), nrow(froms)))) %>%
-    bind_cols(tibble(minimum_reachability = rep(minimum_reachability, nrow(froms)) ))
+  post_data$sources = froms %>%
+    dplyr::bind_cols(tibble::tibble(search_filter = rep(list(list("min_road_class" = min_road_class)), nrow(froms)))) %>%
+    dplyr::bind_cols(tibble::tibble(minimum_reachability = rep(minimum_reachability, nrow(froms)) ))
 
-  post_data$targets = tos %>% bind_cols(tibble(search_filter = rep(list(list("min_road_class" = min_road_class)), nrow(tos)))) %>%
-    bind_cols(tibble(minimum_reachability = rep(minimum_reachability, nrow(tos)) ))
+  post_data$targets = tos %>%
+    dplyr::bind_cols(tibble::tibble(search_filter = rep(list(list("min_road_class" = min_road_class)), nrow(tos)))) %>%
+    dplyr::bind_cols(tibble::tibble(minimum_reachability = rep(minimum_reachability, nrow(tos)) ))
 
   post_data$costing = costing
 
@@ -209,8 +221,8 @@ sources_to_targets <- function(froms, tos, costing = "auto", min_road_class = "r
 
   mat_tibble <- matrix$sources_to_targets %>%
     tibble::enframe() %>%
-    dplyr::select(-name) %>%
-    tidyr::unnest(cols = value)
+    dplyr::select(-"name") %>%
+    tidyr::unnest(cols = "value")
 
 }
 
@@ -251,28 +263,31 @@ sources_to_targets <- function(froms, tos, costing = "auto", min_road_class = "r
 #'   needs to have before it is included. Try increasing this value (e.g. to
 #'   500) if Valhalla is getting stuck in small disconnected road networks.
 #'
-#' @return
+#' @return A tibble showing the trip distances and times from each origin to each named destination.
+#' @importFrom rlang :=
 #' @export
-od_matrix <- function(froms, from_id_col, tos, to_id_col, costing, batch_size, minimum_reachability){
+od_matrix <- function(froms, from_id_col, tos, to_id_col, costing = "auto", batch_size = 100, minimum_reachability = 500){
+  # note: got importFrom rlang trick here: https://stackoverflow.com/questions/58026637/no-visible-global-function-definition-for
+  from_index <- to_index <- NULL
   # FIXME TODO: do input validation!!
 
   # get the human-readable names of the from- and to-data
   from_names <- froms %>%
-    select(from_id_col) %>%
-    rowid_to_column(var = "from_index")
+    dplyr::select(from_id_col) %>%
+    tibble::rowid_to_column(var = "from_index")
 
   to_names <- tos %>%
-    select(to_id_col) %>%
-    rowid_to_column(var = "to_index")
+    dplyr::select(to_id_col) %>%
+    tibble::rowid_to_column(var = "to_index")
 
   # if human-readable column names are identical, append "_from" and "_to" so they differ
   if (from_id_col == to_id_col) {
     new_from <- paste0(from_id_col,"_from")
-    from_names <- rename(from_names, !!(new_from) := from_id_col)
+    from_names <- dplyr::rename(from_names, !!(new_from) := from_id_col)
     from_id_col <- new_from
 
     new_to <- paste0(to_id_col, "_to")
-    to_names <- rename(to_names, !!(new_to) := to_id_col)
+    to_names <- dplyr::rename(to_names, !!(new_to) := to_id_col)
     to_id_col <- new_to
   }
 
@@ -287,18 +302,18 @@ od_matrix <- function(froms, from_id_col, tos, to_id_col, costing, batch_size, m
     end_index <- min( (i*batch_size), nrow(froms))
 
     froms_iter = froms[start_index:end_index, ] %>%
-      drop_na()
-    od <- valhallr::sources_to_targets(froms= froms_iter, tos = tos, costing = costing, minimum_reachability = minimum_reachability)
+      tidyr::drop_na()
+    od <- valhallr::sources_to_targets(froms = froms_iter, tos = tos, costing = costing, minimum_reachability = minimum_reachability)
 
     # FIXME TODO: confirm that sources_to_targets gave us meaningful data!
 
     # make start_index match the original DB row number and doc row number
     od <- od %>%
-      mutate(from_index = from_index + start_index,
+      dplyr::mutate(from_index = from_index + start_index,
              to_index = to_index + 1) %>%
-      left_join(from_names, by = "from_index") %>%
-      left_join(to_names, by = "to_index") %>%
-      select(-to_index, -from_index)
+      dplyr::left_join(from_names, by = "from_index") %>%
+      dplyr::left_join(to_names, by = "to_index") %>%
+      dplyr::select(-to_index, -from_index)
 
     # add results to our pre-built list
     results[[i]] <- od
@@ -307,15 +322,12 @@ od_matrix <- function(froms, from_id_col, tos, to_id_col, costing, batch_size, m
 
   # get results back into a tibble
   output <- results %>%
-    enframe() %>%
-    unnest(value) %>%
-    select(from_id_col, to_id_col, distance, time)
+    tibble::enframe() %>%
+    tidyr::unnest("value") %>%
+    dplyr::select(from_id_col, to_id_col, "distance", "time")
 
   return(output)
-  #
-#   output  %>%
-#     select(from_id_col, to_id_col, distance, time) %>%
-#     write_csv(paste0("data/valhalla_matrix_",costing,"_target.csv"))
+
 }
 
 
@@ -323,10 +335,11 @@ od_matrix <- function(froms, from_id_col, tos, to_id_col, costing, batch_size, m
 
 #' Print Trip Summary and Turn-By-Turn Directions
 #'
-#' @param trip
-#' @param all_details
+#' @param trip A trip response from `valhallr::route()`.
+#' @param all_details Boolean. Should we print each turn-by-turn instruction
+#'   along with an overall summary?
 #'
-#' @return
+#' @return The input `trip` object, invisibly.
 #' @export
 print_trip <- function(trip, all_details = FALSE) {
   cat (paste0("From lat/lng: ", trip$locations$lat[[1]], ", ", trip$locations$lon[[1]]))
@@ -343,18 +356,20 @@ print_trip <- function(trip, all_details = FALSE) {
     }
 
   }
+
+  invisible(trip)
 }
 
 
 
 
 
-#' Make a Leaflet Map from a Trip
+#' Make a Map from a Trip
 #'
-#' @param trip
+#' @param trip A trip response from `valhallr::route()`.
 #' @param method Which mapping service to use. Defaults to leaflet; also can use ggplot.
 #'
-#' @return
+#' @return A map object, either leaflet or ggplot.
 #' @export
 map_trip <- function(trip, method = "leaflet"){
 
@@ -366,18 +381,20 @@ map_trip <- function(trip, method = "leaflet"){
 
   # then plot with leaflet
   if (method == "leaflet"){
-    trip_shp %>%
+    trip_plot <- trip_shp %>%
       leaflet::leaflet() %>%
       leaflet::addTiles() %>%
       leaflet::addPolylines()
   }
 
   if (method == "ggplot"){
-    trip_shp %>%
+    trip_plot <- trip_shp %>%
       ggplot2::ggplot() +
       ggplot2::geom_sf()
 
   }
+
+  trip_plot
 }
 
 
@@ -386,18 +403,18 @@ map_trip <- function(trip, method = "leaflet"){
 #'
 #' https://valhalla.readthedocs.io/en/latest/api/isochrone/api-reference/
 #'
-#' @param from
-#' @param costing
-#' @param contours
+#' @param from A tibble containing one origin location in columns named `lat` and
+#'   `lon`.
+#' @param costing The travel costing method: at present "auto" and "pedestrian"
+#'   are supported.
+#' @param contours A numeric vector of values at which to produce the isochrones.
 #' @param metric Distance or time. Accepts parameters "min" and "km".
 #' @param min_road_class The minimum road classification Valhalla will consider. Defaults to `residential`.
 #' @param minimum_reachability The minimum number of nodes a candidate network
 #'   needs to have before it is included.
 #'
-#' @return
+#' @return An sf/tibble object containing isochrone polygons.
 #' @export
-#'
-#' @examples
 isochrone <- function(from, costing = "pedestrian", contours = c(5, 10, 15), metric = "min", min_road_class = "residential", minimum_reachability = 500){
   # see API reference here
   # https://valhalla.readthedocs.io/en/latest/api/isochrone/api-reference/
@@ -409,7 +426,7 @@ isochrone <- function(from, costing = "pedestrian", contours = c(5, 10, 15), met
 
   post_data <- list()
 
-  post_data$locations <- dplyr::select(from, lat, lon)
+  post_data$locations <- dplyr::select(from, "lat", "lon")
   post_data$costing <- costing
   if (metric == "min") post_data$contours <-  tibble::tibble(time = contours)
   if (metric == "km")  post_data$contours <-  tibble::tibble(distance = contours)
@@ -476,11 +493,13 @@ map_isochrone <- function(isochrone, method = "leaflet") {
       tibble::as_tibble() %>%
       sf::st_as_sf() %>%
       ggplot2::ggplot() +
-      ggspatial::annotation_map_tile() +
-      ggplot2::geom_sf(ggplot2::aes(fill = contour),
+      ggspatial::annotation_map_tile(progress = "none",
+                                     cachedir = tempdir()) +
+      ggplot2::geom_sf(ggplot2::aes(fill = isochrone$contour),
                        alpha = 0.3) +
       ggplot2::labs(fill = metric_name)
   }
 
   return(output)
 }
+

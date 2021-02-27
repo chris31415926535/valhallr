@@ -13,12 +13,23 @@ sources_to_targets(
 )
 }
 \arguments{
+\item{froms}{A tibble containing origin locations in columns named `lat` and
+`lon`.}
+
+\item{tos}{A tibble containing destination locations in columns named `lat` and
+`lon`.}
+
+\item{costing}{The travel costing method: at present "auto" and "pedestrian"
+are supported.}
+
+\item{min_road_class}{The minimum road classification Valhalla will consider. Defaults to `residential`.}
+
 \item{minimum_reachability}{The minimum number of nodes a candidate network
 needs to have before it is included. Try increasing this value (e.g. to
 500) if Valhalla is getting stuck in small disconnected road networks.}
 }
 \value{
-
+A tibble showing the trip distances and times from each origin to each destination.
 }
 \description{
 HIGHLY EXPERIMENTAL AND UNDER DEVELOPMENT. NOT EVEN CLOSE TO DONE.

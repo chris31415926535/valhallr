@@ -9,9 +9,9 @@ od_matrix(
   from_id_col,
   tos,
   to_id_col,
-  costing,
-  batch_size,
-  minimum_reachability
+  costing = "auto",
+  batch_size = 100,
+  minimum_reachability = 500
 )
 }
 \arguments{
@@ -37,7 +37,7 @@ needs to have before it is included. Try increasing this value (e.g. to
 500) if Valhalla is getting stuck in small disconnected road networks.}
 }
 \value{
-
+A tibble showing the trip distances and times from each origin to each named destination.
 }
 \description{
 This function creates a tidy (i.e. long) tibble of

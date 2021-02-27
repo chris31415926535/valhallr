@@ -4,12 +4,16 @@
 \alias{test_data}
 \title{Get Lat/Lon Coordinates for Testing}
 \usage{
-test_data(dataset)
+test_data(dataset = NA)
+}
+\arguments{
+\item{dataset}{The name of a test dataset.}
 }
 \value{
 A one-row tibble with a location's name, latitude, and longitude.
 }
 \description{
 This function gives quick access to lat/lon coordinates for a few points
-around Ontario for testing and benchmarking purposes.
+around Ontario for testing and benchmarking purposes. The data sets will vary;
+for a list, call the function with no value.
 }

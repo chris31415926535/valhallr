@@ -14,6 +14,14 @@ isochrone(
 )
 }
 \arguments{
+\item{from}{A tibble containing one origin location in columns named `lat` and
+`lon`.}
+
+\item{costing}{The travel costing method: at present "auto" and "pedestrian"
+are supported.}
+
+\item{contours}{A numeric vector of values at which to produce the isochrones.}
+
 \item{metric}{Distance or time. Accepts parameters "min" and "km".}
 
 \item{min_road_class}{The minimum road classification Valhalla will consider. Defaults to `residential`.}
@@ -22,7 +30,7 @@ isochrone(
 needs to have before it is included.}
 }
 \value{
-
+An sf/tibble object containing isochrone polygons.
 }
 \description{
 https://valhalla.readthedocs.io/en/latest/api/isochrone/api-reference/

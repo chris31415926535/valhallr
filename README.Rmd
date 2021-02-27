@@ -13,12 +13,12 @@ knitr::opts_chunk$set(
 )
 ```
 
-# valhallr
+# valhallr: A Tidy Interface to the Valhalla Routing Engine
 
 <!-- badges: start -->
 <!-- badges: end -->
 
-This package provides an R-native interface to the Valhalla routing engine's API.
+This package provides an R-native interface to the Valhalla routing engine's API. *Please note* that at present it requires a local Valhalla instance running on port 8002.
 
 * [API Documentation](https://valhalla.readthedocs.io/en/latest/api/turn-by-turn/api-reference/)
 
@@ -36,13 +36,13 @@ This example shows how we can easily get turn-by-turn driving directions using m
 library(valhallr)
 library(magrittr)
 library(dplyr)
-library(tibble)
-library(tidyr)
+# library(tibble)
+# library(tidyr)
 
 origin <- valhallr::test_data("uottawa")
 destination <- valhallr::test_data("cdntirecentre")
 
-trip <- valhallr::valhalla_route(from = origin, to = destination)
+trip <- valhallr::route(from = origin, to = destination)
 
 valhallr::print_trip(trip, all_details = TRUE)
 

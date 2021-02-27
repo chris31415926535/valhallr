@@ -7,10 +7,13 @@
 print_trip(trip, all_details = FALSE)
 }
 \arguments{
-\item{all_details}{}
+\item{trip}{A trip response from `valhallr::route()`.}
+
+\item{all_details}{Boolean. Should we print each turn-by-turn instruction
+along with an overall summary?}
 }
 \value{
-
+The input `trip` object, invisibly.
 }
 \description{
 Print Trip Summary and Turn-By-Turn Directions

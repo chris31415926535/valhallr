@@ -14,10 +14,25 @@ route(
 )
 }
 \arguments{
-\item{unit}{}
+\item{from}{A tibble containing one origin location in columns named `lat` and
+`lon`.}
+
+\item{to}{A tibble containing one destination location in columns named `lat` and
+`lon`.}
+
+\item{costing}{The travel costing method: at present "auto" and "pedestrian"
+are supported.}
+
+\item{unit}{Distance measurement units. Defaults to "kilometres".}
+
+\item{min_road_class}{The minimum road classification Valhalla will consider. Defaults to `residential`.}
+
+\item{minimum_reachability}{The minimum number of nodes a candidate network
+needs to have before it is included. Try increasing this value (e.g. to
+500) if Valhalla is getting stuck in small disconnected road networks.}
 }
 \value{
-
+A trip object. (TODO! This could be an S3 object.)
 }
 \description{
 Note: This is a highly experimental function and will almost certainly change.

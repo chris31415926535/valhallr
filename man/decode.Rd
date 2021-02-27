@@ -7,11 +7,16 @@
 decode(encoded)
 }
 \arguments{
-\item{encoded}{}
+\item{encoded}{An encoded shapefile in ASCII format from Valhalla's API.}
 }
 \value{
-
+A tibble containing point locations in `lat` and `lon` columns.
 }
 \description{
-Decode Valhalla Route Shape
+For point-to-point routing, Valhalla's API provides a route shapefile in a
+special ASCII-encoded format. This function takes an encoded string, decodes
+it, and returns the lat/lon coordinates as a tibble.
+}
+\details{
+To map the results, see also `valhallr::map_trip()`.
 }

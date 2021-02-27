@@ -2,16 +2,18 @@
 % Please edit documentation in R/valhalla.R
 \name{map_trip}
 \alias{map_trip}
-\title{Make a Leaflet Map from a Trip}
+\title{Make a Map from a Trip}
 \usage{
 map_trip(trip, method = "leaflet")
 }
 \arguments{
+\item{trip}{A trip response from `valhallr::route()`.}
+
 \item{method}{Which mapping service to use. Defaults to leaflet; also can use ggplot.}
 }
 \value{
-
+A map object, either leaflet or ggplot.
 }
 \description{
-Make a Leaflet Map from a Trip
+Make a Map from a Trip
 }

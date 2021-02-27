@@ -1,14 +1,15 @@
 
 <!-- README.md is generated from README.Rmd. Please edit that file -->
 
-# valhallr
+# valhallr: A Tidy Interface to the Valhalla Routing Engine
 
 <!-- badges: start -->
 
 <!-- badges: end -->
 
 This package provides an R-native interface to the Valhalla routing
-engine’s API.
+engine’s API. *Please note* that at present it requires a local Valhalla
+instance running on port 8002.
 
   - [API
     Documentation](https://valhalla.readthedocs.io/en/latest/api/turn-by-turn/api-reference/)
@@ -32,13 +33,13 @@ of Ottawa to the Canadian Tire Centre (an arena across town).
 library(valhallr)
 library(magrittr)
 library(dplyr)
-library(tibble)
-library(tidyr)
+# library(tibble)
+# library(tidyr)
 
 origin <- valhallr::test_data("uottawa")
 destination <- valhallr::test_data("cdntirecentre")
 
-trip <- valhallr::valhalla_route(from = origin, to = destination)
+trip <- valhallr::route(from = origin, to = destination)
 
 valhallr::print_trip(trip, all_details = TRUE)
 #> From lat/lng: 45.4234, -75.6832
@@ -141,18 +142,18 @@ origin <- valhallr::test_data("myhouse")
 isochrones <- valhallr::isochrone(from = origin)
 
 isochrones
-#> Simple feature collection with 3 features and 8 fields
+#> Simple feature collection with 3 features and 9 fields
 #> geometry type:  POLYGON
 #> dimension:      XY
 #> bbox:           xmin: -75.67904 ymin: 45.37081 xmax: -75.6507 ymax: 45.38982
 #> geographic CRS: WGS 84
-#> # A tibble: 3 x 9
+#> # A tibble: 3 x 10
 #>   fill  fillOpacity fill.opacity fillColor color contour opacity metric
-#>   <chr>       <dbl>        <dbl> <chr>     <chr>   <int>   <dbl> <chr> 
+#> * <chr>       <dbl>        <dbl> <chr>     <chr>   <int>   <dbl> <chr> 
 #> 1 #bf4~        0.33         0.33 #bf4040   #bf4~      15    0.33 time  
 #> 2 #bfa~        0.33         0.33 #bfaa40   #bfa~      10    0.33 time  
 #> 3 #6ab~        0.33         0.33 #6abf40   #6ab~       5    0.33 time  
-#> # ... with 1 more variable: geometry <POLYGON [°]>
+#> # ... with 2 more variables: geometry <POLYGON [°]>, costing <chr>
 ```
 
 There’s also a simple function to map them via Leaflet or ggplot:
