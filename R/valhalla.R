@@ -49,7 +49,7 @@ test_data <- function(dataset){
 #'
 #' @return
 #' @export
-valhalla_route <- function(from = NA, to = NA, costing = "auto", unit = "kilometers", min_road_class = "residential", minimum_reachability = 50){
+route <- function(from = NA, to = NA, costing = "auto", unit = "kilometers", min_road_class = "residential", minimum_reachability = 50){
   # see API reference here
   #https://valhalla.readthedocs.io/en/latest/api/turn-by-turn/api-reference/
 
@@ -64,23 +64,19 @@ valhalla_route <- function(from = NA, to = NA, costing = "auto", unit = "kilomet
     dplyr::bind_cols(tibble::tibble(search_filter = rep(list(list("min_road_class" = min_road_class)), 2))) %>%
     dplyr::bind_cols(tibble::tibble(minimum_reachability = rep(minimum_reachability, 2) ))
 
-
   post_data$costing = costing
   post_data$directions_options$units = unit
 
+  post_json <- jsonlite::toJSON(post_data, auto_unbox = TRUE)
+
+  resp <- httr::POST(url = "http://localhost:8002/route",
+                     body = post_json,
+                     httr::user_agent("https://github.com/chris31415926535/valhallr"))
+
+  if (httr::http_type(resp) != "application/json") stop ("API did not return json.", call. = FALSE)
 
 
-  post_json <- post_data %>%
-    jsonlite::toJSON(auto_unbox = TRUE)
-
-  #post_data
-  #curl http://localhost:8002/route --data '{"locations":[{"lat":45.380521,"lon": -75.665359},{"lat":45.384269,"lon":-75.671515}],"costing":"auto","directions_options":{"units":"miles"}}'
-
-  resp <- httr::POST(url = "http://localhost:8002/route", body = post_json)
-
-  resp_data <- resp %>%
-    httr::content(type = "text") %>%
-    jsonlite::fromJSON()
+  resp_data <- jsonlite::fromJSON(httr::content(resp, type = "text"), encoding = "UTF-8")
 
   resp_data %>%
     purrr::pluck(1)
@@ -180,27 +176,36 @@ decode <- function(encoded) {
 #'
 #' @param froms
 #' @param tos
-#' @param chunk_size
+#' @param costing
+#' @param min_road_class
+#' @param minimum_reachability The minimum number of nodes a candidate network
+#'   needs to have before it is included. Try increasing this value (e.g. to
+#'   500) if Valhalla is getting stuck in small disconnected road networks.
 #'
 #' @return
 #' @export
-sources_to_targets <- function(froms, tos, costing = "auto", chunk_size = 1, min_road_class = "residential", minimum_reachability = 50){
+sources_to_targets <- function(froms, tos, costing = "auto", min_road_class = "residential", minimum_reachability = 50){
 
 
-  test_make <- list()
+  post_data <- list()
 
-  test_make$sources = froms %>% bind_cols(tibble(search_filter = rep(list(list("min_road_class" = min_road_class)), nrow(froms)))) %>%
+  post_data$sources = froms %>% bind_cols(tibble(search_filter = rep(list(list("min_road_class" = min_road_class)), nrow(froms)))) %>%
     bind_cols(tibble(minimum_reachability = rep(minimum_reachability, nrow(froms)) ))
 
-  test_make$targets = tos %>% bind_cols(tibble(search_filter = rep(list(list("min_road_class" = min_road_class)), nrow(tos)))) %>%
+  post_data$targets = tos %>% bind_cols(tibble(search_filter = rep(list(list("min_road_class" = min_road_class)), nrow(tos)))) %>%
     bind_cols(tibble(minimum_reachability = rep(minimum_reachability, nrow(tos)) ))
 
-  test_make$costing = costing
+  post_data$costing = costing
 
-  resp2 <- httr::POST(url = "http://localhost:8002/sources_to_targets", body = test_make %>% jsonlite::toJSON(auto_unbox = TRUE))
+  post_json <- jsonlite::toJSON(post_data, auto_unbox = TRUE)
 
-  matrix <- resp2 %>% httr::content(type = "text") %>%
-    jsonlite::fromJSON()
+  resp <- httr::POST(url = "http://localhost:8002/sources_to_targets",
+                     body = post_json,
+                     httr::user_agent("https://github.com/chris31415926535/valhallr"))
+
+  if (httr::http_type(resp) != "application/json") stop ("API did not return json.", call. = FALSE)
+
+  matrix <- jsonlite::fromJSON(httr::content(resp, type = "text", encoding = "UTF-8"))
 
   mat_tibble <- matrix$sources_to_targets %>%
     tibble::enframe() %>%
@@ -220,7 +225,7 @@ sources_to_targets <- function(froms, tos, costing = "auto", chunk_size = 1, min
 #'   different travel modes and routing options.
 #'
 #'   This function calls `valhalla::sources_to_targets()`, which interacts with
-#'   the Valhalla API directly, but offers several user-friendly features.
+#'   the Valhalla API directly, and offers several user-friendly features.
 #'
 #'   * You can specify human-readable indices with `from_id_col` and
 #'   `to_id_col`. (Valhalla's API only returns zero-indexed integer
@@ -313,37 +318,6 @@ od_matrix <- function(froms, from_id_col, tos, to_id_col, costing, batch_size, m
 #     write_csv(paste0("data/valhalla_matrix_",costing,"_target.csv"))
 }
 
-#
-# # # ## TESTING BAD FORM
-# library(tidyverse)
-# library(valhallr)
-# library(sf)
-#
-# tos = tibble::tibble(lat=45.5, lon=-75)
-# froms = tibble::tibble(lon = -75.84322, lat = 45.10085)
-#
-# od <- sources_to_targets(froms, tos, min_road_class="residential")
-# od
-#
-# od2 <- sources_to_targets(froms, tos, min_road_class="service_other")
-# od2
-#
-# trip_res <- valhalla_route(froms, tos)
-# print_trip(trip_res)
-#
-# trip_svc <- valhalla_route(froms, tos, min_road_class = "service_other")
-# print_trip(trip_svc)
-#
-# trip_mw <- valhalla_route(froms, tos, min_road_class="motorway")
-# print_trip(trip2, all_details = TRUE)
-#
-# map_trip(trip_svc)
-# map_trip(trip_res)
-#
-# # # #
-#
-
-
 
 
 
@@ -371,22 +345,6 @@ print_trip <- function(trip, all_details = FALSE) {
   }
 }
 
-
-
-## TESTING BAD FORM
-#
-# library(tidyverse)
-#
-#
-# from = onsr::geocode_ottawa(tibble::tibble(address = "1243 Willowdale Ave"), address) %>% dplyr::select(-address) %>% dplyr::rename(lon = 2)
-# tos = tibble::tibble(lat = runif(n = 10, min = 45.3, max = 45.4),
-#                      lon = runif(n = 10, min = -75.8, max = -75.6))
-#
-# test <- sources_to_targets(from, tos)
-#
-# test
-#
-# valhalla_route(from %>% rename(lng = 2), tos[1,] %>% rename(lng = 2))
 
 
 
@@ -425,48 +383,53 @@ map_trip <- function(trip, method = "leaflet"){
 
 #' Generate isochrones
 #'
+#'
+#' https://valhalla.readthedocs.io/en/latest/api/isochrone/api-reference/
+#'
 #' @param from
 #' @param costing
-#' @param contours_time
-#' @param min_road_class
-#' @param minimum_reachability
+#' @param contours
+#' @param metric Distance or time. Accepts parameters "min" and "km".
+#' @param min_road_class The minimum road classification Valhalla will consider. Defaults to `residential`.
+#' @param minimum_reachability The minimum number of nodes a candidate network
+#'   needs to have before it is included.
 #'
 #' @return
 #' @export
 #'
 #' @examples
-isochrone <- function(from, costing = "pedestrian", contours_time = c(5, 10, 15), min_road_class = "residential", minimum_reachability = 500){
+isochrone <- function(from, costing = "pedestrian", contours = c(5, 10, 15), metric = "min", min_road_class = "residential", minimum_reachability = 500){
   # see API reference here
-  #https://valhalla.readthedocs.io/en/latest/api/turn-by-turn/api-reference/
+  # https://valhalla.readthedocs.io/en/latest/api/isochrone/api-reference/
+
+  # validating input
+  if (nrow(from) > 1) stop ("More than one location supplied. Please supply a one-row input tibble with `lat` and `lon` columns.")
+  if (! (("lat" %in% names(from)) & ("lon" %in% names(from))) ) stop ("From tibble must inclide one column named `lat` and one named `lon`.")
+  if (!metric %in% c("min", "km")) stop ("Invalid metric. Please use `min` for time in minutes or `km` for distance in kilometres.")
 
   post_data <- list()
 
-  post_data$locations <- from %>%
-    dplyr::select(lat, lon) #%>%
-    #dplyr::bind_cols(tibble::tibble(search_filter =list("min_road_class" = min_road_class))) %>%
-    #dplyr::bind_cols(tibble::tibble(minimum_reachability = minimum_reachability ))
-
-
+  post_data$locations <- dplyr::select(from, lat, lon)
   post_data$costing <- costing
-
-  # FIXME handle colours better and multiple contours!!
-  post_data$contours <-  tibble::tibble(time = contours_time)
+  if (metric == "min") post_data$contours <-  tibble::tibble(time = contours)
+  if (metric == "km")  post_data$contours <-  tibble::tibble(distance = contours)
 
   post_data$polygons <- TRUE
 
+  post_json <- jsonlite::toJSON(post_data, auto_unbox = TRUE)
 
-  post_json <- post_data %>%
-    jsonlite::toJSON(auto_unbox = TRUE)
+  resp <- httr::POST(url = "http://localhost:8002/isochrone",
+                     body = post_json,
+                     httr::user_agent("https://github.com/chris31415926535/valhallr"))
 
-  #post_json <- '{"locations":[{"lat":45.380738,"lon":-75.665578}],"costing":"pedestrian","contours":[{"time":15,"color":"ff0000"}]}'
+  if (httr::http_type(resp) != "application/json") stop ("API did not return json.", call. = FALSE)
 
-  resp <- httr::POST(url = "http://localhost:8002/isochrone", body = post_json)
-
-  resp_data <- resp %>%
-    httr::content(type = "text") %>%
+  resp_data <- httr::content(resp, type = "text", encoding = "UTF-8") %>%
     geojsonio::geojson_sf() %>%
     tibble::as_tibble() %>%
     sf::st_as_sf()
+
+  resp_data$costing <- costing
 
   return (resp_data)
 
@@ -476,23 +439,29 @@ isochrone <- function(from, costing = "pedestrian", contours_time = c(5, 10, 15)
 
 #' Generate maps of isochrones
 #'
-#' @param isochrome
-#' @param method
+#' @param isochrone An isochrone sf object generated by `valhallr::isochrone()`.
+#' @param method The method used to map it. Two methods are supported:
+#'  * "leaflet" produces an interactive HTML map using the Leaflet package.
+#'  * "ggplot" produces a static
 #'
-#' @return
+#' @return A plot of the isochrones, either a a leaflet object or a ggplot object.
 #' @export
-#'
-#' @examples
 map_isochrone <- function(isochrone, method = "leaflet") {
 
+  if (!method %in% c("leaflet", "ggplot")) stop ("Invalid map method. Please specify `leaflet` or `ggplot`.")
+
   metric_name <- "ERROR: METRIC NOT DETECTED"
-  output <- "ERROR: Please supply method leaflet or ggplot."
-  if (isochrone$metric[[1]] == "time") metric_name <- "Minutes"
+  costing_name <- "ERROR: COSTING NOT DETECTED"
+
+
+  if (isochrone$metric[[1]] == "time")     metric_name <- "Minutes"
   if (isochrone$metric[[1]] == "distance") metric_name <- "Kilometres"
+  if (isochrone$costing[[1]] == "auto")    costing_name <- "Driving"
+  if (isochrone$costing[[1]] == "pedestrian")    costing_name <- "Walking"
 
   if (method == "leaflet"){
 
-    iso_labels <- paste0(isochrone$contour, " ", metric_name) %>%
+    iso_labels <- paste0(isochrone$contour, " ", metric_name, " ", costing_name) %>%
       purrr::map(htmltools::HTML)
 
     output <- isochrone %>%

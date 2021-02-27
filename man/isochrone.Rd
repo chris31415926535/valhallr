@@ -7,17 +7,20 @@
 isochrone(
   from,
   costing = "pedestrian",
-  contours_time = c(5, 10, 15),
+  contours = c(5, 10, 15),
+  metric = "min",
   min_road_class = "residential",
   minimum_reachability = 500
 )
 }
 \arguments{
+\item{metric}{Distance or time. Accepts parameters "min" and "km".}
+
 \item{minimum_reachability}{}
 }
 \value{
 
 }
 \description{
-Generate isochrones
+https://valhalla.readthedocs.io/en/latest/api/isochrone/api-reference/
 }
