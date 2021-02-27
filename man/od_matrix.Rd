@@ -47,7 +47,7 @@ This function creates a tidy (i.e. long) tibble of
   different travel modes and routing options.
 
   This function calls `valhalla::sources_to_targets()`, which interacts with
-  the Valhalla API directly, but offers several user-friendly features.
+  the Valhalla API directly, and offers several user-friendly features.
 
   * You can specify human-readable indices with `from_id_col` and
   `to_id_col`. (Valhalla's API only returns zero-indexed integer

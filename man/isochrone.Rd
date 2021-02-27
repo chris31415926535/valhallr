@@ -16,7 +16,10 @@ isochrone(
 \arguments{
 \item{metric}{Distance or time. Accepts parameters "min" and "km".}
 
-\item{minimum_reachability}{}
+\item{min_road_class}{The minimum road classification Valhalla will consider. Defaults to `residential`.}
+
+\item{minimum_reachability}{The minimum number of nodes a candidate network
+needs to have before it is included.}
 }
 \value{
 

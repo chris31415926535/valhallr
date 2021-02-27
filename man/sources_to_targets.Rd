@@ -8,13 +8,14 @@ sources_to_targets(
   froms,
   tos,
   costing = "auto",
-  chunk_size = 1,
   min_road_class = "residential",
   minimum_reachability = 50
 )
 }
 \arguments{
-\item{chunk_size}{}
+\item{minimum_reachability}{The minimum number of nodes a candidate network
+needs to have before it is included. Try increasing this value (e.g. to
+500) if Valhalla is getting stuck in small disconnected road networks.}
 }
 \value{
 
