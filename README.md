@@ -3,12 +3,6 @@
 
 # valhallr: A Tidy Interface to the Valhalla Routing Engine
 
-``` r
-library(valhallr)
-```
-
-# Introduction
-
 This package provides an R-native interface to the Valhalla routing
 engine’s APIs for turn-by-turn routing, isochrones, and
 origin-destination analyses. It also includes several user-friendly
@@ -55,6 +49,8 @@ with all default options, and then passes the result to
 `valhallr::print_trip()`.
 
 ``` r
+library(valhallr)
+
 from <- test_data("uottawa")
 to <- test_data("cdntirecentre")
 t <- route(from, to)
@@ -79,7 +75,6 @@ supports an interactive map using **leaflet** or an static map using
 
 ``` r
 map_trip(t, method = "ggplot")
-#> Loading required namespace: raster
 ```
 
 <img src="man/figures/README-map_ottawa_auto-1.png" width="100%" />
@@ -135,14 +130,6 @@ our targets in a tibble called `tos`, and then pass them to
 
 ``` r
 library(dplyr)
-#> 
-#> Attaching package: 'dplyr'
-#> The following objects are masked from 'package:stats':
-#> 
-#>     filter, lag
-#> The following objects are masked from 'package:base':
-#> 
-#>     intersect, setdiff, setequal, union
 froms <- bind_rows(test_data("parliament"), test_data("uottawa"), test_data("cntower"))
 tos <- bind_rows(test_data("cdntirecentre"), test_data("zwicksisland"))
 
@@ -225,9 +212,6 @@ from <- test_data("kenora")
 
 # generate an isochrone for travel by bicycle
 i <- valhallr::isochrone(from, costing = "bicycle")
-#> Registered S3 method overwritten by 'geojsonsf':
-#>   method        from   
-#>   print.geojson geojson
 
 # map the isochrone
 map_isochrone(i, method = "ggplot")
