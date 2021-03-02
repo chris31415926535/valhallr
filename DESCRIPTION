@@ -2,10 +2,13 @@ Package: valhallr
 Type: Package
 Title: A Tidy R Interface to the Valhalla Routing Engine
 Version: 0.1.0
-Author: Who wrote it
-Maintainer: The package maintainer <yourself@somewhere.net>
-Description: More about what it does (maybe more than one line)
-    Use four spaces when indenting paragraphs within the Description.
+Author: Christopher Belanger
+Maintainer: Christopher Belanger <christopher.a.belanger@gmail.com>
+Description: An R-native interface to the Valhalla routing engine’s APIs for 
+    turn-by-turn routing, isochrones, and origin-destination analyses.
+    Also includes several user-friendly functions for plotting outputs,
+    and strives to follow "tidy" design principles. Please note that this
+    package requires access to a running Valhalla instance.
 License: GPL (>= 3)
 Encoding: UTF-8
 LazyData: true
@@ -24,7 +27,13 @@ Imports:
     stringr,
     ggspatial,
     geojsonio,
-    rlang
+    rlang,
+    Cairo
 RoxygenNote: 7.1.1
 URL: https://github.com/chris31415926535/valhallr
 BugReports: https://github.com/chris31415926535/valhallr/issues
+Roxygen: list(markdown = TRUE)
+Suggests: 
+    knitr,
+    rmarkdown
+VignetteBuilder: knitr

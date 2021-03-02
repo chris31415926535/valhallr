@@ -3,17 +3,16 @@
 #' Get Lat/Lon Coordinates for Testing
 #'
 #' This function gives quick access to lat/lon coordinates for a few points
-#' around Ontario for testing and benchmarking purposes. The data sets will vary;
-#' for a list, call the function with no value.
+#' around Ontario for testing and benchmarking purposes.
 #'
-#' @param dataset The name of a test dataset.
+#' @param dataset The name of a test dataset. By default, and if an unknown input
+#' is given, it returns all values.
 #'
-#' @return A one-row tibble with a location's name, latitude, and longitude.
+#' @return A tibble with one or more location names, latitudes, and longitudes.
 #' @export
 test_data <- function(dataset = NA){
-
+  name <- NULL
   datasets <- tibble::tribble(~name, ~lat, ~lon,
-                              "myhouse", 45.380738, -75.665578,
                               "uottawa", 45.423382, -75.683170,
                               "parliament", 45.424774, -75.699473,
                               "cntower", 43.642748, -79.386602,
@@ -24,20 +23,10 @@ test_data <- function(dataset = NA){
                               "kenora", 49.765876, -94.487444,
                               "killarney", 46.012289, -81.401437)
 
-  if (is.na(dataset)){
-    stop(paste0("Please specify a test dataset. Possible values are: ",
-                stringr::str_flatten(datasets$name, collapse = ", ")))
-  }
-
   result <- tibble::tibble()
-  dataset <- tolower(dataset)
 
-  result <- datasets[datasets$name == dataset,] #dplyr::filter(datasets, name == dataset)
-
-  if (nrow(result) == 0){
-    stop(paste0("Please specify a test dataset. Possible values are: ",
-                stringr::str_flatten(datasets$name, collapse = ", ")))
-  }
+  result <- dplyr::filter(datasets, name == dataset)
+  if (nrow(result) == 0) result <- datasets
 
   return(result)
 
@@ -46,59 +35,95 @@ test_data <- function(dataset = NA){
 
 #' Point-to-Point Routing with Valhalla
 #'
-#' Note: This is a highly experimental function and will almost certainly change.
-#' Right now from and to are one-row tibbles. That's probably not correct.
+#' This function calls Valhalla's `route` API to return turn-by-turn directions from one
+#' origin to one destination. Several costing methods are supported, and there are
+#' parameters that let you give custom options to Valhalla. **Please note that this
+#'   function requires access to a running instance of Valhalla.**
 #'
-#' It does no input validation, no error handling, nothing. Use at own risk.
+#' For more details, please check the Valhalla API documentation here:
+#'
+#' * [https://valhalla.readthedocs.io/en/latest/api/turn-by-turn/api-reference/](https://valhalla.readthedocs.io/en/latest/api/turn-by-turn/api-reference/)
 #'
 #' @param from A tibble containing one origin location in columns named `lat` and
 #'   `lon`.
 #' @param to A tibble containing one destination location in columns named `lat` and
 #'   `lon`.
-#' @param costing The travel costing method: at present "auto" and "pedestrian"
-#'   are supported.
+#' @param costing The travel costing method. Values "auto", "bicycle", and "pedestrian"
+#'   all work.
 #' @param unit Distance measurement units. Defaults to "kilometres".
-#' @param min_road_class The minimum road classification Valhalla will consider. Defaults to `residential`.
 #' @param minimum_reachability The minimum number of nodes a candidate network
 #'   needs to have before it is included. Try increasing this value (e.g. to
 #'   500) if Valhalla is getting stuck in small disconnected road networks.
-#' @return A trip object. (TODO! This could be an S3 object.)
+#' @param from_search_filter A named list of options provided to Valhalla API. Defaults set a
+#'   maximum road class ("motorway", the highest) and minimum road class ("residential",
+#'   which is one above the lowest, "service_other"). See API documentation for details.
+#' @param to_search_filter A named list of options provided to Valhalla API. Defaults set a
+#'   maximum road class ("motorway", the highest) and minimum road class ("residential",
+#'   which is one above the lowest, "service_other"). See API documentation for details.
+#' @param costing_options A named list of options provided to the Valhalla API that affect route costing,
+#'   e.g. willingness to travel on highways or through alleys. See API documentation for details.
+#' @param hostname Hostname or IP address of your Valhalla instance. Defaults to "localhost".
+#' @param port The port your Valhalla instance is monitoring. Defaults to 8002.
+#' @return A trip object.
+#'
+#' @examples
+#' \dontrun{
+#'   library(valhallr)
+#'   # set up origin and destination data
+#'   from <- test_data("uottawa")
+#'   to <- test_data("cdntirecentre")
+#'
+#'   # calculate the trip
+#'   trip <- route(from = from, to = to)
+#'
+#'   # show overall trip information
+#'   print_trip(trip, all_details = FALSE)
+#'
+#'   # make an interactive map of the trip using the leaflet package
+#'   map_trip(trip, method = "leaflet")
+#'}
 #' @export
-route <- function(from = NA, to = NA, costing = "auto", unit = "kilometers", min_road_class = "residential", minimum_reachability = 50){
+route <- function(from = NA, to = NA, costing = "auto", unit = "kilometers", from_search_filter = list(max_road_class = "motorway", min_road_class = "residential"), to_search_filter = list(max_road_class = "motorway", min_road_class = "residential"),minimum_reachability = 50, costing_options = list(), hostname = "localhost", port = 8002){
   # see API reference here
   #https://valhalla.readthedocs.io/en/latest/api/turn-by-turn/api-reference/
+
+  if ((nrow(from) > 1 ) | (nrow(to) > 1)) stop("Either `from` or `to` has more than one row. Please supply one-row tibbles with `lat` and `lon` columns.")
 
   post_data <- list()
 
   post_data$locations <- from %>%
-    dplyr::select("lat", "lon") %>% # = lng) %>%
+    dplyr::select("lat", "lon") %>%
     dplyr::bind_rows({
       to %>%
-        dplyr::select("lat", "lon")} # = lng)}
+        dplyr::select("lat", "lon")}
     ) %>%
-    dplyr::bind_cols(tibble::tibble(search_filter = rep(list(list("min_road_class" = min_road_class)), 2))) %>%
+    dplyr::bind_cols(tibble::tibble(search_filter = list(from_search_filter, to_search_filter))) %>%
     dplyr::bind_cols(tibble::tibble(minimum_reachability = rep(minimum_reachability, 2) ))
 
   post_data$costing = costing
+  if (costing == "auto") post_data$costing_options$auto = costing_options
+  if (costing == "pedestrian") post_data$costing_options$pedestrian = costing_options
+  if (costing == "bicycle") post_data$costing_options$bicycle = costing_options
+  if (costing == "truck") post_data$costing_options$truck = costing_options
+
   post_data$directions_options$units = unit
 
   post_json <- jsonlite::toJSON(post_data, auto_unbox = TRUE)
 
-  resp <- httr::POST(url = "http://localhost:8002/route",
+  url <- paste0("http://",hostname,":",port,"/route")
+  resp <- httr::POST(url = url,
                      body = post_json,
                      httr::user_agent("https://github.com/chris31415926535/valhallr"))
 
   if (httr::http_type(resp) != "application/json") stop ("API did not return json.", call. = FALSE)
-
+  if (httr::http_error(resp)){
+    message("Error: API call returned error. Returning API response for debugging.")
+    return(resp)
+  }
 
   resp_data <- jsonlite::fromJSON(httr::content(resp, type = "text", encoding = "UTF-8"))
 
-  resp_data %>%
-    purrr::pluck(1)
-
-  #{"sources":[{"lat":40.744014,"lon":-73.990508},{"lat":40.739735,"lon":-73.979713},{"lat":40.752522,"lon":-73.985015},{"lat":40.750117,"lon":-73.983704},{"lat":40.750552,"lon":-73.993519}],"targets":[{"lat":40.744014,"lon":-73.990508},{"lat":40.739735,"lon":-73.979713},{"lat":40.752522,"lon":-73.985015},{"lat":40.750117,"lon":-73.983704},{"lat":40.750552,"lon":-73.993519}],"costing":"pedestrian"}&id=ManyToMany_NYC_work_dinner
-
-
+  return(resp_data[[1]])
 }
 
 
@@ -180,42 +205,82 @@ decode <- function(encoded) {
 
 #' Source-to-Targets Origin/Destination Matrices with Valhalla
 #'
-#' HIGHLY EXPERIMENTAL AND UNDER DEVELOPMENT. NOT EVEN CLOSE TO DONE.
+#' @description This function creates a tidy (i.e. long) table of
+#'   origin-destination trip data using the Valhalla routing engine. For a set
+#'   of o origins and d destinations, it returns a tibble with (o x d) rows with
+#'   the travel distance and time between each pair. It can handle several
+#'   different travel modes and routing options. **Please note that this
+#'   function requires access to a running instance of Valhalla.**
+#'
+#'   This function provides fine-grained control over Valhalla's API options.
+#'
+#'   * For a user-friendly function, see the function `valhallr::od_table()`.
+#'   * For details about the API, see Valhalla's documentation here: [https://valhalla.readthedocs.io/en/latest/api/matrix/api-reference/](https://valhalla.readthedocs.io/en/latest/api/matrix/api-reference/)
+#'
 #'
 #' @param froms A tibble containing origin locations in columns named `lat` and
 #'   `lon`.
 #' @param tos A tibble containing destination locations in columns named `lat` and
 #'   `lon`.
-#' @param costing The travel costing method: at present "auto" and "pedestrian"
+#' @param costing The travel costing method: at present "auto", "bicycle", and "pedestrian"
 #'   are supported.
-#' @param min_road_class The minimum road classification Valhalla will consider. Defaults to `residential`.
 #' @param minimum_reachability The minimum number of nodes a candidate network
 #'   needs to have before it is included. Try increasing this value (e.g. to
 #'   500) if Valhalla is getting stuck in small disconnected road networks.
-#'
+#' @param from_search_filter A named list of options provided to Valhalla API. Defaults set a
+#'   maximum road class ("motorway", the highest) and minimum road class ("residential",
+#'   which is one above the lowest, "service_other"). See API documentation for details.
+#' @param to_search_filter A named list of options provided to Valhalla API. Defaults set a
+#'   maximum road class ("motorway", the highest) and minimum road class ("residential",
+#'   which is one above the lowest, "service_other"). See API documentation for details.
+#' @param costing_options A named list of options provided to the Valhalla API that affect route costing,
+#'   e.g. willingness to travel on highways or through alleys. See API documentation for details.
+#' @param hostname Hostname or IP address of your Valhalla instance. Defaults to "localhost".
+#' @param port The port your Valhalla instance is monitoring. Defaults to 8002.
 #' @return A tibble showing the trip distances and times from each origin to each destination.
+#'
+#' @examples
+#' \dontrun{
+#' # NOTE: Assumes an instance of Valhalla is running on localhost:8002.
+#' library(dplyr)
+#' library(valhallr)
+#' froms <- bind_rows(test_data("parliament"), test_data("uottawa"))
+#' tos <- bind_rows(test_data("cdntirecentre"), test_data("parliament"))
+#' st <- sources_to_targets(froms, tos)
+#' }
 #' @export
-sources_to_targets <- function(froms, tos, costing = "auto", min_road_class = "residential", minimum_reachability = 50){
+sources_to_targets <- function(froms, tos, costing = "auto",from_search_filter = list(max_road_class = "motorway", min_road_class = "residential"), to_search_filter = list(max_road_class = "motorway", min_road_class = "residential"), minimum_reachability = 50, costing_options = list(), hostname = "localhost", port = 8002){
 
   post_data <- list()
 
   post_data$sources = froms %>%
-    dplyr::bind_cols(tibble::tibble(search_filter = rep(list(list("min_road_class" = min_road_class)), nrow(froms)))) %>%
+    dplyr::bind_cols(tibble::tibble(search_filter = rep(list(from_search_filter)), nrow(froms)) ) %>%
+    #dplyr::bind_cols(tibble::tibble(search_filter = rep(list(list("min_road_class" = min_road_class)), nrow(froms)))) %>%
     dplyr::bind_cols(tibble::tibble(minimum_reachability = rep(minimum_reachability, nrow(froms)) ))
 
   post_data$targets = tos %>%
-    dplyr::bind_cols(tibble::tibble(search_filter = rep(list(list("min_road_class" = min_road_class)), nrow(tos)))) %>%
+    dplyr::bind_cols(tibble::tibble(search_filter = rep(list(to_search_filter)), nrow(tos)) ) %>%
+    #dplyr::bind_cols(tibble::tibble(search_filter = rep(list(list("min_road_class" = min_road_class)), nrow(tos)))) %>%
     dplyr::bind_cols(tibble::tibble(minimum_reachability = rep(minimum_reachability, nrow(tos)) ))
 
   post_data$costing = costing
+  if (costing == "auto") post_data$costing_options$auto = costing_options
+  if (costing == "pedestrian") post_data$costing_options$pedestrian = costing_options
+  if (costing == "bicycle") post_data$costing_options$bicycle = costing_options
+  if (costing == "truck") post_data$costing_options$truck = costing_options
 
   post_json <- jsonlite::toJSON(post_data, auto_unbox = TRUE)
 
-  resp <- httr::POST(url = "http://localhost:8002/sources_to_targets",
+  url <- paste0("http://",hostname,":",port,"/sources_to_targets")
+  resp <- httr::POST(url = url,
                      body = post_json,
                      httr::user_agent("https://github.com/chris31415926535/valhallr"))
 
   if (httr::http_type(resp) != "application/json") stop ("API did not return json.", call. = FALSE)
+  if (httr::http_error(resp)){
+    message("Error: API call returned error. Returning API response for debugging.")
+    return(resp)
+  }
 
   matrix <- jsonlite::fromJSON(httr::content(resp, type = "text", encoding = "UTF-8"))
 
@@ -230,14 +295,18 @@ sources_to_targets <- function(froms, tos, costing = "auto", min_road_class = "r
 
 #' Generate Tidy Origin-Destination Data using Valhalla
 #'
-#' @description This function creates a tidy (i.e. long) tibble of
+#' @description This function creates a tidy (i.e. long) table of
 #'   origin-destination trip data using the Valhalla routing engine. For a set
 #'   of o origins and d destinations, it returns a tibble with (o x d) rows with
 #'   the travel distance and time between each pair. It can handle several
 #'   different travel modes and routing options.
 #'
-#'   This function calls `valhalla::sources_to_targets()`, which interacts with
-#'   the Valhalla API directly, and offers several user-friendly features.
+#'   This function is a user-friendly wrapper around`valhalla::sources_to_targets()`,
+#'   which calls the Valhalla API directly. `sources_to_targets()` offers finer-
+#'   grained control over API options, and so this latter function may be more
+#'   useful for advanced users.
+#'
+#'   Notable features of `od_matrix()`:
 #'
 #'   * You can specify human-readable indices with `from_id_col` and
 #'   `to_id_col`. (Valhalla's API only returns zero-indexed integer
@@ -256,17 +325,36 @@ sources_to_targets <- function(froms, tos, costing = "auto", min_road_class = "r
 #'   and `lon`, and an optional column with human-readable names.
 #' @param to_id_col The name of the column in `tos` that contains human-readable
 #'   names.
-#' @param costing The travel costing method: at present "auto" and "pedestrian"
-#'   are supported.
+#' @param costing The travel costing method: at present "auto", "bicycle", and
+#' "pedestrian" are supported.
 #' @param batch_size The number of origin points to process per API call.
 #' @param minimum_reachability The minimum number of nodes a candidate network
 #'   needs to have before it is included. Try increasing this value (e.g. to
 #'   500) if Valhalla is getting stuck in small disconnected road networks.
+#' @param verbose Boolean. Defaults to FALSE. If TRUE, it will provide updates on
+#'   on the batching process (if applicable).
 #'
 #' @return A tibble showing the trip distances and times from each origin to each named destination.
 #' @importFrom rlang :=
+#' @example
+#' \dontrun{
+#' library(dplyr)
+#' library(valhallr)
+#' # set up our inputs
+#' froms <- bind_rows(test_data("parliament"), test_data("uottawa"), test_data("cntower"))
+#' tos <- bind_rows(test_data("cdntirecentre"), test_data("parliament"))
+#'
+#' # generate a tidy origin-destination table
+#' od <- od_table (froms = froms,
+#'                 from_id_col = "name",
+#'                 tos,
+#'                 to_id_col = "name",
+#'                 costing = "auto",
+#'                 batch_size = 100,
+#'                 minimum_reachability = 500)
+#' }
 #' @export
-od_matrix <- function(froms, from_id_col, tos, to_id_col, costing = "auto", batch_size = 100, minimum_reachability = 500){
+od_table <- function(froms, from_id_col, tos, to_id_col, costing = "auto", batch_size = 100, minimum_reachability = 500, verbose = FALSE){
   # note: got importFrom rlang trick here: https://stackoverflow.com/questions/58026637/no-visible-global-function-definition-for
   from_index <- to_index <- NULL
   # FIXME TODO: do input validation!!
@@ -297,7 +385,7 @@ od_matrix <- function(froms, from_id_col, tos, to_id_col, costing = "auto", batc
 
   # do each batch
   for (i in 1:n_iters){
-    message(paste0(i,"/",n_iters))
+    if (verbose) message(paste0(i,"/",n_iters))
     start_index <- (i-1)*batch_size + 1
     end_index <- min( (i*batch_size), nrow(froms))
 
@@ -340,6 +428,7 @@ od_matrix <- function(froms, from_id_col, tos, to_id_col, costing = "auto", batc
 #'   along with an overall summary?
 #'
 #' @return The input `trip` object, invisibly.
+#' @inherit route examples
 #' @export
 print_trip <- function(trip, all_details = FALSE) {
   cat (paste0("From lat/lng: ", trip$locations$lat[[1]], ", ", trip$locations$lon[[1]]))
@@ -370,6 +459,7 @@ print_trip <- function(trip, all_details = FALSE) {
 #' @param method Which mapping service to use. Defaults to leaflet; also can use ggplot.
 #'
 #' @return A map object, either leaflet or ggplot.
+#' @inherit route examples
 #' @export
 map_trip <- function(trip, method = "leaflet"){
 
@@ -390,7 +480,10 @@ map_trip <- function(trip, method = "leaflet"){
   if (method == "ggplot"){
     trip_plot <- trip_shp %>%
       ggplot2::ggplot() +
-      ggplot2::geom_sf()
+      ggspatial::annotation_map_tile(progress = "none",
+                                     zoomin = -1,
+                                     cachedir = tempdir()) +
+      ggplot2::geom_sf(colour = "blue", size = 2)
 
   }
 
@@ -398,24 +491,47 @@ map_trip <- function(trip, method = "leaflet"){
 }
 
 
-#' Generate isochrones
+#' Generate Isochrones
 #'
+#' An isochrone, also known as a service area, is a polygon that shows the
+#' area reachable from a starting point by traveling along a road network
+#' for a certain distance or time. This function provides an interface to
+#' the Valhalla routing engine's isochrone API. It lets you provide a starting
+#' point's latitude and longitude, a distance or time metric, and a vector
+#' of distances/times, and if it's successful it returns an sf-class tibble of
+#' polygons.
 #'
-#' https://valhalla.readthedocs.io/en/latest/api/isochrone/api-reference/
+#' More more information, please see Valhalla's API documentation:
+#'
+#' * [https://valhalla.readthedocs.io/en/latest/api/isochrone/api-reference/](https://valhalla.readthedocs.io/en/latest/api/isochrone/api-reference/)
 #'
 #' @param from A tibble containing one origin location in columns named `lat` and
 #'   `lon`.
-#' @param costing The travel costing method: at present "auto" and "pedestrian"
+#' @param costing The travel costing method: at present "auto", "bicycle", and "pedestrian"
 #'   are supported.
 #' @param contours A numeric vector of values at which to produce the isochrones.
 #' @param metric Distance or time. Accepts parameters "min" and "km".
 #' @param min_road_class The minimum road classification Valhalla will consider. Defaults to `residential`.
 #' @param minimum_reachability The minimum number of nodes a candidate network
 #'   needs to have before it is included.
+#' @param hostname Hostname or IP address of your Valhalla instance. Defaults to "localhost".
+#' @param port The port your Valhalla instance is monitoring. Defaults to 8002.
 #'
 #' @return An sf/tibble object containing isochrone polygons.
+#' @examples
+#' \dontrun{
+#' library(valhallr)
+#' # set up our departure point: the University of Ottawa
+#' from <- test_data("uottawa")
+#'
+#' # generate a set of isochrones for travel by bicycle
+#' i <- valhallr::isochrone(from, costing = "bicycle")
+#'
+#' # map the isochrones
+#' map_isochrone(i)
+#' }
 #' @export
-isochrone <- function(from, costing = "pedestrian", contours = c(5, 10, 15), metric = "min", min_road_class = "residential", minimum_reachability = 500){
+isochrone <- function(from, costing = "pedestrian", contours = c(5, 10, 15), metric = "min", min_road_class = "residential", minimum_reachability = 500, hostname = "localhost", port = 8002){
   # see API reference here
   # https://valhalla.readthedocs.io/en/latest/api/isochrone/api-reference/
 
@@ -435,11 +551,16 @@ isochrone <- function(from, costing = "pedestrian", contours = c(5, 10, 15), met
 
   post_json <- jsonlite::toJSON(post_data, auto_unbox = TRUE)
 
-  resp <- httr::POST(url = "http://localhost:8002/isochrone",
+  url <- paste0("http://",hostname,":",port,"/isochrone")
+  resp <- httr::POST(url = url,
                      body = post_json,
                      httr::user_agent("https://github.com/chris31415926535/valhallr"))
 
   if (httr::http_type(resp) != "application/json") stop ("API did not return json.", call. = FALSE)
+  if (httr::http_error(resp)){
+    message("Error: API call returned error. Returning API response for debugging.")
+    return(resp)
+  }
 
   resp_data <- httr::content(resp, type = "text", encoding = "UTF-8") %>%
     geojsonio::geojson_sf() %>%
@@ -456,15 +577,19 @@ isochrone <- function(from, costing = "pedestrian", contours = c(5, 10, 15), met
 
 #' Generate maps of isochrones
 #'
+#' This is a convenience function that takes the output of `valhallr::isochrone()`
+#' and generates either a static or interactive map.
+#'
 #' @param isochrone An isochrone sf object generated by `valhallr::isochrone()`.
 #' @param method The method used to map it. Two methods are supported:
 #'  * "leaflet" produces an interactive HTML map using the Leaflet package.
-#'  * "ggplot" produces a static
+#'  * "ggplot" produces a static map.
 #'
 #' @return A plot of the isochrones, either a a leaflet object or a ggplot object.
+#' @inherit isochrone examples
 #' @export
 map_isochrone <- function(isochrone, method = "leaflet") {
-
+  contour <- NULL
   if (!method %in% c("leaflet", "ggplot")) stop ("Invalid map method. Please specify `leaflet` or `ggplot`.")
 
   metric_name <- "ERROR: METRIC NOT DETECTED"
@@ -475,6 +600,7 @@ map_isochrone <- function(isochrone, method = "leaflet") {
   if (isochrone$metric[[1]] == "distance") metric_name <- "Kilometres"
   if (isochrone$costing[[1]] == "auto")    costing_name <- "Driving"
   if (isochrone$costing[[1]] == "pedestrian")    costing_name <- "Walking"
+  if (isochrone$costing[[1]] == "bicycle")    costing_name <- "Cycling"
 
   if (method == "leaflet"){
 
@@ -494,8 +620,9 @@ map_isochrone <- function(isochrone, method = "leaflet") {
       sf::st_as_sf() %>%
       ggplot2::ggplot() +
       ggspatial::annotation_map_tile(progress = "none",
+                                     zoomin = -1,
                                      cachedir = tempdir()) +
-      ggplot2::geom_sf(ggplot2::aes(fill = isochrone$contour),
+      ggplot2::geom_sf(ggplot2::aes(fill = contour),
                        alpha = 0.3) +
       ggplot2::labs(fill = metric_name)
   }

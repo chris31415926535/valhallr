@@ -1,27 +1,29 @@
 ---
-output: github_document
+title: "valhallr: A Tidy R Interface to the Valhalla Routing Engine"
+author: Christopher Belanger
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{valhallr: A Tidy R Interface to the Valhalla Routing Engine}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
 ---
 
-<!-- README.md is generated from README.Rmd. Please edit that file -->
-
 ```{r, include = FALSE}
+# as per this link :https://ropensci.org/blog/2019/12/08/precompute-vignettes/
+# precompute this vignette since it needs API calls
+# knitr::knit("vignettes/valhallr.Rmd.orig", output = "vignettes/valhallr.Rmd")
 knitr::opts_chunk$set(
   collapse = TRUE,
-  comment = "#>",
-  fig.path = "man/figures/README-",
-  out.width = "100%"
+  warning = FALSE,
+  message = FALSE,
+  comment = "#>", out.width = "100%",
+  fig.width = 7, fig.height = 4, dev = "CairoPNG", dpi = 150, fig.path = "valhallr-"
 )
 ```
-
-# valhallr: A Tidy Interface to the Valhalla Routing Engine
 
 ```{r setup}
 library(valhallr)
 ```
-
-# Introduction
-
-This package provides an R-native interface to the Valhalla routing engine’s APIs for turn-by-turn routing, isochrones, and origin-destination analyses. It also includes several user-friendly functions for plotting outputs, and strives to follow "tidy" design principles. **Please note** that this package requires access to a running Valhalla instance.
 
 # Step 0: Install and run Valhalla
 

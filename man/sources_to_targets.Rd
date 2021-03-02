@@ -8,29 +8,68 @@ sources_to_targets(
   froms,
   tos,
   costing = "auto",
-  min_road_class = "residential",
-  minimum_reachability = 50
+  from_search_filter = list(max_road_class = "motorway", min_road_class =
+    "residential"),
+  to_search_filter = list(max_road_class = "motorway", min_road_class = "residential"),
+  minimum_reachability = 50,
+  costing_options = list(),
+  hostname = "localhost",
+  port = 8002
 )
 }
 \arguments{
-\item{froms}{A tibble containing origin locations in columns named `lat` and
-`lon`.}
+\item{froms}{A tibble containing origin locations in columns named \code{lat} and
+\code{lon}.}
 
-\item{tos}{A tibble containing destination locations in columns named `lat` and
-`lon`.}
+\item{tos}{A tibble containing destination locations in columns named \code{lat} and
+\code{lon}.}
 
-\item{costing}{The travel costing method: at present "auto" and "pedestrian"
+\item{costing}{The travel costing method: at present "auto", "bicycle", and "pedestrian"
 are supported.}
 
-\item{min_road_class}{The minimum road classification Valhalla will consider. Defaults to `residential`.}
+\item{from_search_filter}{A named list of options provided to Valhalla API. Defaults set a
+maximum road class ("motorway", the highest) and minimum road class ("residential",
+which is one above the lowest, "service_other"). See API documentation for details.}
+
+\item{to_search_filter}{A named list of options provided to Valhalla API. Defaults set a
+maximum road class ("motorway", the highest) and minimum road class ("residential",
+which is one above the lowest, "service_other"). See API documentation for details.}
 
 \item{minimum_reachability}{The minimum number of nodes a candidate network
 needs to have before it is included. Try increasing this value (e.g. to
 500) if Valhalla is getting stuck in small disconnected road networks.}
+
+\item{costing_options}{A named list of options provided to the Valhalla API that affect route costing,
+e.g. willingness to travel on highways or through alleys. See API documentation for details.}
+
+\item{hostname}{Hostname or IP address of your Valhalla instance. Defaults to "localhost".}
+
+\item{port}{The port your Valhalla instance is monitoring. Defaults to 8002.}
 }
 \value{
 A tibble showing the trip distances and times from each origin to each destination.
 }
 \description{
-HIGHLY EXPERIMENTAL AND UNDER DEVELOPMENT. NOT EVEN CLOSE TO DONE.
+This function creates a tidy (i.e. long) table of
+origin-destination trip data using the Valhalla routing engine. For a set
+of o origins and d destinations, it returns a tibble with (o x d) rows with
+the travel distance and time between each pair. It can handle several
+different travel modes and routing options. \strong{Please note that this
+function requires access to a running instance of Valhalla.}
+
+This function provides fine-grained control over Valhalla's API options.
+\itemize{
+\item For a user-friendly function, see the function \code{valhallr::od_table()}.
+\item For details about the API, see Valhalla's documentation here: \url{https://valhalla.readthedocs.io/en/latest/api/matrix/api-reference/}
+}
+}
+\examples{
+\dontrun{
+# NOTE: Assumes an instance of Valhalla is running on localhost:8002.
+library(dplyr)
+library(valhallr)
+froms <- bind_rows(test_data("parliament"), test_data("uottawa"))
+tos <- bind_rows(test_data("cdntirecentre"), test_data("parliament"))
+st <- sources_to_targets(froms, tos)
+}
 }

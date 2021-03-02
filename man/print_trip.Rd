@@ -7,14 +7,31 @@
 print_trip(trip, all_details = FALSE)
 }
 \arguments{
-\item{trip}{A trip response from `valhallr::route()`.}
+\item{trip}{A trip response from \code{valhallr::route()}.}
 
 \item{all_details}{Boolean. Should we print each turn-by-turn instruction
 along with an overall summary?}
 }
 \value{
-The input `trip` object, invisibly.
+The input \code{trip} object, invisibly.
 }
 \description{
 Print Trip Summary and Turn-By-Turn Directions
+}
+\examples{
+\dontrun{
+  library(valhallr)
+  # set up origin and destination data
+  from <- test_data("uottawa")
+  to <- test_data("cdntirecentre")
+
+  # calculate the trip
+  trip <- route(from = from, to = to)
+
+  # show overall trip information
+  print_trip(trip, all_details = FALSE)
+
+  # make an interactive map of the trip using the leaflet package
+  map_trip(trip, method = "leaflet")
+}
 }

@@ -7,7 +7,7 @@
 map_trip(trip, method = "leaflet")
 }
 \arguments{
-\item{trip}{A trip response from `valhallr::route()`.}
+\item{trip}{A trip response from \code{valhallr::route()}.}
 
 \item{method}{Which mapping service to use. Defaults to leaflet; also can use ggplot.}
 }
@@ -16,4 +16,21 @@ A map object, either leaflet or ggplot.
 }
 \description{
 Make a Map from a Trip
+}
+\examples{
+\dontrun{
+  library(valhallr)
+  # set up origin and destination data
+  from <- test_data("uottawa")
+  to <- test_data("cdntirecentre")
+
+  # calculate the trip
+  trip <- route(from = from, to = to)
+
+  # show overall trip information
+  print_trip(trip, all_details = FALSE)
+
+  # make an interactive map of the trip using the leaflet package
+  map_trip(trip, method = "leaflet")
+}
 }

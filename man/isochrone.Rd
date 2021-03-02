@@ -2,7 +2,7 @@
 % Please edit documentation in R/valhalla.R
 \name{isochrone}
 \alias{isochrone}
-\title{Generate isochrones}
+\title{Generate Isochrones}
 \usage{
 isochrone(
   from,
@@ -10,28 +10,59 @@ isochrone(
   contours = c(5, 10, 15),
   metric = "min",
   min_road_class = "residential",
-  minimum_reachability = 500
+  minimum_reachability = 500,
+  hostname = "localhost",
+  port = 8002
 )
 }
 \arguments{
-\item{from}{A tibble containing one origin location in columns named `lat` and
-`lon`.}
+\item{from}{A tibble containing one origin location in columns named \code{lat} and
+\code{lon}.}
 
-\item{costing}{The travel costing method: at present "auto" and "pedestrian"
+\item{costing}{The travel costing method: at present "auto", "bicycle", and "pedestrian"
 are supported.}
 
 \item{contours}{A numeric vector of values at which to produce the isochrones.}
 
 \item{metric}{Distance or time. Accepts parameters "min" and "km".}
 
-\item{min_road_class}{The minimum road classification Valhalla will consider. Defaults to `residential`.}
+\item{min_road_class}{The minimum road classification Valhalla will consider. Defaults to \code{residential}.}
 
 \item{minimum_reachability}{The minimum number of nodes a candidate network
 needs to have before it is included.}
+
+\item{hostname}{Hostname or IP address of your Valhalla instance. Defaults to "localhost".}
+
+\item{port}{The port your Valhalla instance is monitoring. Defaults to 8002.}
 }
 \value{
 An sf/tibble object containing isochrone polygons.
 }
 \description{
-https://valhalla.readthedocs.io/en/latest/api/isochrone/api-reference/
+An isochrone, also known as a service area, is a polygon that shows the
+area reachable from a starting point by traveling along a road network
+for a certain distance or time. This function provides an interface to
+the Valhalla routing engine's isochrone API. It lets you provide a starting
+point's latitude and longitude, a distance or time metric, and a vector
+of distances/times, and if it's successful it returns an sf-class tibble of
+polygons.
+}
+\details{
+More more information, please see Valhalla's API documentation:
+\itemize{
+\item \url{https://valhalla.readthedocs.io/en/latest/api/isochrone/api-reference/}
+}
+}
+\examples{
+\dontrun{
+library(valhallr)
+# set up our departure point: the University of Ottawa
+from <- test_data("uottawa")
+
+# generate a set of isochrones for travel by bicycle
+i <- valhallr::isochrone(from, costing = "bicycle")
+
+# map the isochrones
+map_isochrone(i)
+}
 }

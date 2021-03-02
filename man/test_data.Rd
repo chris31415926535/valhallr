@@ -7,13 +7,13 @@
 test_data(dataset = NA)
 }
 \arguments{
-\item{dataset}{The name of a test dataset.}
+\item{dataset}{The name of a test dataset. By default, and if an unknown input
+is given, it returns all values.}
 }
 \value{
-A one-row tibble with a location's name, latitude, and longitude.
+A tibble with one or more location names, latitudes, and longitudes.
 }
 \description{
 This function gives quick access to lat/lon coordinates for a few points
-around Ontario for testing and benchmarking purposes. The data sets will vary;
-for a list, call the function with no value.
+around Ontario for testing and benchmarking purposes.
 }

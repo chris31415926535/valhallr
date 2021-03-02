@@ -9,35 +9,75 @@ route(
   to = NA,
   costing = "auto",
   unit = "kilometers",
-  min_road_class = "residential",
-  minimum_reachability = 50
+  from_search_filter = list(max_road_class = "motorway", min_road_class =
+    "residential"),
+  to_search_filter = list(max_road_class = "motorway", min_road_class = "residential"),
+  minimum_reachability = 50,
+  costing_options = list(),
+  hostname = "localhost",
+  port = 8002
 )
 }
 \arguments{
-\item{from}{A tibble containing one origin location in columns named `lat` and
-`lon`.}
+\item{from}{A tibble containing one origin location in columns named \code{lat} and
+\code{lon}.}
 
-\item{to}{A tibble containing one destination location in columns named `lat` and
-`lon`.}
+\item{to}{A tibble containing one destination location in columns named \code{lat} and
+\code{lon}.}
 
-\item{costing}{The travel costing method: at present "auto" and "pedestrian"
-are supported.}
+\item{costing}{The travel costing method. Values "auto", "bicycle", and "pedestrian"
+all work.}
 
 \item{unit}{Distance measurement units. Defaults to "kilometres".}
 
-\item{min_road_class}{The minimum road classification Valhalla will consider. Defaults to `residential`.}
+\item{from_search_filter}{A named list of options provided to Valhalla API. Defaults set a
+maximum road class ("motorway", the highest) and minimum road class ("residential",
+which is one above the lowest, "service_other"). See API documentation for details.}
+
+\item{to_search_filter}{A named list of options provided to Valhalla API. Defaults set a
+maximum road class ("motorway", the highest) and minimum road class ("residential",
+which is one above the lowest, "service_other"). See API documentation for details.}
 
 \item{minimum_reachability}{The minimum number of nodes a candidate network
 needs to have before it is included. Try increasing this value (e.g. to
 500) if Valhalla is getting stuck in small disconnected road networks.}
+
+\item{costing_options}{A named list of options provided to the Valhalla API that affect route costing,
+e.g. willingness to travel on highways or through alleys. See API documentation for details.}
+
+\item{hostname}{Hostname or IP address of your Valhalla instance. Defaults to "localhost".}
+
+\item{port}{The port your Valhalla instance is monitoring. Defaults to 8002.}
 }
 \value{
-A trip object. (TODO! This could be an S3 object.)
+A trip object.
 }
 \description{
-Note: This is a highly experimental function and will almost certainly change.
-Right now from and to are one-row tibbles. That's probably not correct.
+This function calls Valhalla's \code{route} API to return turn-by-turn directions from one
+origin to one destination. Several costing methods are supported, and there are
+parameters that let you give custom options to Valhalla. \strong{Please note that this
+function requires access to a running instance of Valhalla.}
 }
 \details{
-It does no input validation, no error handling, nothing. Use at own risk.
+For more details, please check the Valhalla API documentation here:
+\itemize{
+\item \url{https://valhalla.readthedocs.io/en/latest/api/turn-by-turn/api-reference/}
+}
+}
+\examples{
+\dontrun{
+  library(valhallr)
+  # set up origin and destination data
+  from <- test_data("uottawa")
+  to <- test_data("cdntirecentre")
+
+  # calculate the trip
+  trip <- route(from = from, to = to)
+
+  # show overall trip information
+  print_trip(trip, all_details = FALSE)
+
+  # make an interactive map of the trip using the leaflet package
+  map_trip(trip, method = "leaflet")
+}
 }
