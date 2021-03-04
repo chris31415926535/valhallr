@@ -17,13 +17,11 @@ knitr::opts_chunk$set(
   warning = FALSE,
   message = FALSE,
   comment = "#>", out.width = "100%",
-  fig.width = 7, fig.height = 4, dev = "CairoPNG", dpi = 150, fig.path = "valhallr-"
+  fig.width = 7, fig.height = 4,  dpi = 150, fig.path = "valhallr-",
+  dev = "jpeg", quality = "50"
 )
 ```
 
-```{r setup}
-library(valhallr)
-```
 
 # Step 0: Install and run Valhalla
 
@@ -37,6 +35,25 @@ Here are some example resources to help you get Valhalla up and running:
 
 The rest of this vignette assumes a running Valhalla instance on localhost at the default port 8002.
 
+# Load the package and point it to Valhalla
+
+Once you have access to Valhalla, you're ready to start. The package lets you specify any hostname/IP address and port, but as a default it looks at port 8002 on "localhost". Here we'll set the hostname and port manually to make it
+clear.
+
+
+```{r setup, include = TRUE, eval = FALSE}
+library(valhallr)
+host <- "localhost"
+port <- 8002
+```
+
+```{r secret_setup, include = FALSE, eval = TRUE}
+# put actual hostname etc here
+library(valhallr)
+host <- "192.168.2.30"
+port <- 8002
+```
+
 # Turn-by-turn routing
 
 The function `valhallr::route()` uses Valhalla to generate detailed turn-by-turn routing from an origin to a destination. It's straightforward to use: you provide origin and destination coordinates in tibbles with `lat` and `lon` columns, along with any number of optional options, and the API returns an object containing the resulting trip.
@@ -44,9 +61,12 @@ The function `valhallr::route()` uses Valhalla to generate detailed turn-by-turn
 This example shows how to generate driving directions between the University of Ottawa and the Canadian Tire Centre, a stadium in Ottawa. It gets these coordinates from the function `valhallr::test_data()`, which can return coordinates for several points of interest around Ontario. It then calls `valhallr::route()` between these two locations with all default options, and then passes the result to `valhallr::print_trip()`.
 
 ```{r}
-from <- test_data("uottawa")
-to <- test_data("cdntirecentre")
-t <- route(from, to)
+origin <- test_data("uottawa")
+destination <- test_data("cdntirecentre")
+t <- route(from = origin,
+           to = destination,
+           hostname = host,
+           port = port)
 
 print_trip(t)
 ```
@@ -63,7 +83,11 @@ map_trip(t, method = "ggplot")
 What if we wanted to travel by bicycle instead? We can change our travel method from the default, "auto", using the `costing` parameter. Here we set it to "bicycle" and re-run the command:
 
 ```{r}
-t <- route(from, to, costing = "bicycle")
+t <- route(from = origin,
+           to = destination,
+           costing = "bicycle",
+           hostname = host,
+           port = port)
 
 print_trip(t)
 ```
@@ -86,10 +110,16 @@ To create an OD table, we set up our sources in a tibble called `froms`, our tar
 
 ```{r}
 library(dplyr)
-froms <- bind_rows(test_data("parliament"), test_data("uottawa"), test_data("cntower"))
-tos <- bind_rows(test_data("cdntirecentre"), test_data("zwicksisland"))
+origins <- bind_rows(test_data("parliament"),
+                   test_data("uottawa"),
+                   test_data("cntower"))
+destinations <- bind_rows(test_data("cdntirecentre"),
+                   test_data("zwicksisland"))
 
-st <- sources_to_targets(froms, tos)
+st <- sources_to_targets(froms = origins,
+                         tos = destinations,
+                         hostname = host,
+                         port = port)
 
 st %>%
   knitr::kable()
@@ -102,10 +132,12 @@ The `valhallr::od_table()` function addresses these two problems by letting you 
 Here we can see the results of calling `od_table()` with the same inputs as before, this time specifying the names of the human-readable id columns in each input tibble:
 
 ```{r}
-od <- od_table (froms = froms,
+od <- od_table (froms = origins,
                 from_id_col = "name",
-                tos,
-                to_id_col = "name")
+                tos = destinations,
+                to_id_col = "name",
+                hostname = host,
+                port = port)
 
 od %>%
   knitr::kable()
@@ -124,10 +156,13 @@ For example, how far can you get from downtown Kenora on a bicycle using the def
 
 ```{r map_isochrone_kenora}
 # set up our departure point: the University of Ottawa
-from <- test_data("kenora")
+origin <- test_data("kenora")
 
 # generate an isochrone for travel by bicycle
-i <- valhallr::isochrone(from, costing = "bicycle")
+i <- valhallr::isochrone(from = origin,
+                         costing = "bicycle",
+                         hostname = host,
+                         port = port)
 
 # map the isochrone
 map_isochrone(i, method = "ggplot")
@@ -139,9 +174,14 @@ Pretty far, by the looks of it! You can see how the isochrones follow the road n
 For another example, how far can you drive from Sudbury's Big Nickel in 30, 60, and 90 minutes?
 
 ```{r map_isochrone_sudbury}
-from <- test_data("bignickel")
+origin <- test_data("bignickel")
 
-i <- valhallr::isochrone(from, costing = "auto", contours = c(30,60,90), metric = "min")
+i <- valhallr::isochrone(from = origin,
+                         costing = "auto",
+                         contours = c(30,60,90),
+                         metric = "min",
+                         hostname = host,
+                         port = port)
 
 map_isochrone(i, method = "ggplot")
 ```

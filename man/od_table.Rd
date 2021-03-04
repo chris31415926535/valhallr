@@ -12,7 +12,9 @@ od_table(
   costing = "auto",
   batch_size = 100,
   minimum_reachability = 500,
-  verbose = FALSE
+  verbose = FALSE,
+  hostname = "localhost",
+  port = 8002
 )
 }
 \arguments{
@@ -39,6 +41,10 @@ needs to have before it is included. Try increasing this value (e.g. to
 
 \item{verbose}{Boolean. Defaults to FALSE. If TRUE, it will provide updates on
 on the batching process (if applicable).}
+
+\item{hostname}{Hostname or IP address of your Valhalla instance. Defaults to "localhost".}
+
+\item{port}{The port your Valhalla instance is monitoring. Defaults to 8002.}
 }
 \value{
 A tibble showing the trip distances and times from each origin to each named destination.
@@ -64,5 +70,23 @@ identifiers.)
 several smaller API calls, to prevent your Valhalla instance from running
 out of memory. This seems especially important for pedestrian routing,
 where I've sometimes needed to use a batch size as small as 5.
+}
+}
+\examples{
+\dontrun{
+library(dplyr)
+library(valhallr)
+# set up our inputs
+origins <- bind_rows(test_data("parliament"), test_data("uottawa"), test_data("cntower"))
+destinations <- bind_rows(test_data("cdntirecentre"), test_data("parliament"))
+
+# generate a tidy origin-destination table
+od <- od_table (froms = origins,
+                from_id_col = "name",
+                tos = destinations,
+                to_id_col = "name",
+                costing = "auto",
+                batch_size = 100,
+                minimum_reachability = 500)
 }
 }

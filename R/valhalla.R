@@ -333,28 +333,30 @@ sources_to_targets <- function(froms, tos, costing = "auto",from_search_filter =
 #'   500) if Valhalla is getting stuck in small disconnected road networks.
 #' @param verbose Boolean. Defaults to FALSE. If TRUE, it will provide updates on
 #'   on the batching process (if applicable).
+#' @param hostname Hostname or IP address of your Valhalla instance. Defaults to "localhost".
+#' @param port The port your Valhalla instance is monitoring. Defaults to 8002.
 #'
 #' @return A tibble showing the trip distances and times from each origin to each named destination.
 #' @importFrom rlang :=
-#' @example
+#' @examples
 #' \dontrun{
 #' library(dplyr)
 #' library(valhallr)
 #' # set up our inputs
-#' froms <- bind_rows(test_data("parliament"), test_data("uottawa"), test_data("cntower"))
-#' tos <- bind_rows(test_data("cdntirecentre"), test_data("parliament"))
+#' origins <- bind_rows(test_data("parliament"), test_data("uottawa"), test_data("cntower"))
+#' destinations <- bind_rows(test_data("cdntirecentre"), test_data("parliament"))
 #'
 #' # generate a tidy origin-destination table
-#' od <- od_table (froms = froms,
+#' od <- od_table (froms = origins,
 #'                 from_id_col = "name",
-#'                 tos,
+#'                 tos = destinations,
 #'                 to_id_col = "name",
 #'                 costing = "auto",
 #'                 batch_size = 100,
 #'                 minimum_reachability = 500)
 #' }
 #' @export
-od_table <- function(froms, from_id_col, tos, to_id_col, costing = "auto", batch_size = 100, minimum_reachability = 500, verbose = FALSE){
+od_table <- function(froms, from_id_col, tos, to_id_col, costing = "auto", batch_size = 100, minimum_reachability = 500, verbose = FALSE, hostname = "localhost", port = 8002){
   # note: got importFrom rlang trick here: https://stackoverflow.com/questions/58026637/no-visible-global-function-definition-for
   from_index <- to_index <- NULL
   # FIXME TODO: do input validation!!
@@ -391,7 +393,12 @@ od_table <- function(froms, from_id_col, tos, to_id_col, costing = "auto", batch
 
     froms_iter = froms[start_index:end_index, ] %>%
       tidyr::drop_na()
-    od <- valhallr::sources_to_targets(froms = froms_iter, tos = tos, costing = costing, minimum_reachability = minimum_reachability)
+    od <- valhallr::sources_to_targets(froms = froms_iter,
+                                       tos = tos,
+                                       costing = costing,
+                                       minimum_reachability = minimum_reachability,
+                                       hostname = hostname,
+                                       port = port)
 
     # FIXME TODO: confirm that sources_to_targets gave us meaningful data!
 

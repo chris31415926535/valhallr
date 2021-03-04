@@ -11,10 +11,6 @@ vignette: >
 
 
 
-```r
-library(valhallr)
-```
-
 # Step 0: Install and run Valhalla
 
 This package provides an R-native interface to the Valhalla routing engine, and assumes that you have access to a running Valhalla instance. If you don't, you won't be able to use any of the functions described in this vignette! Installing and configuring Valhalla is far out of scope for this vignette, but Valhalla is open-source and there are several free resources that you might find helpful.
@@ -27,6 +23,21 @@ Here are some example resources to help you get Valhalla up and running:
 
 The rest of this vignette assumes a running Valhalla instance on localhost at the default port 8002.
 
+# Load the package and point it to Valhalla
+
+Once you have access to Valhalla, you're ready to start. The package lets you specify any hostname/IP address and port, but as a default it looks at port 8002 on "localhost". Here we'll set the hostname and port manually to make it
+clear.
+
+
+
+```r
+library(valhallr)
+host <- "localhost"
+port <- 8002
+```
+
+
+
 # Turn-by-turn routing
 
 The function `valhallr::route()` uses Valhalla to generate detailed turn-by-turn routing from an origin to a destination. It's straightforward to use: you provide origin and destination coordinates in tibbles with `lat` and `lon` columns, along with any number of optional options, and the API returns an object containing the resulting trip.
@@ -35,9 +46,12 @@ This example shows how to generate driving directions between the University of 
 
 
 ```r
-from <- test_data("uottawa")
-to <- test_data("cdntirecentre")
-t <- route(from, to)
+origin <- test_data("uottawa")
+destination <- test_data("cdntirecentre")
+t <- route(from = origin,
+           to = destination,
+           hostname = host,
+           port = port)
 
 print_trip(t)
 #> From lat/lng: 45.4234, -75.6832
@@ -55,13 +69,17 @@ We can answer this question with the function `valhallr::map_trip()` that takes 
 map_trip(t, method = "ggplot")
 ```
 
-<img src="valhallr-map_ottawa_auto-1.png" title="plot of chunk map_ottawa_auto" alt="plot of chunk map_ottawa_auto" width="100%" />
+<img src="valhallr-map_ottawa_auto-1.jpeg" title="plot of chunk map_ottawa_auto" alt="plot of chunk map_ottawa_auto" width="100%" />
 
 What if we wanted to travel by bicycle instead? We can change our travel method from the default, "auto", using the `costing` parameter. Here we set it to "bicycle" and re-run the command:
 
 
 ```r
-t <- route(from, to, costing = "bicycle")
+t <- route(from = origin,
+           to = destination,
+           costing = "bicycle",
+           hostname = host,
+           port = port)
 
 print_trip(t)
 #> From lat/lng: 45.4234, -75.6832
@@ -77,7 +95,7 @@ This new trip is a bit longer at 30.028km, and would take quite a bit longer at 
 map_trip(t, method = "ggplot")
 ```
 
-<img src="valhallr-map_ottawa_bicycle-1.png" title="plot of chunk map_ottawa_bicycle" alt="plot of chunk map_ottawa_bicycle" width="100%" />
+<img src="valhallr-map_ottawa_bicycle-1.jpeg" title="plot of chunk map_ottawa_bicycle" alt="plot of chunk map_ottawa_bicycle" width="100%" />
 
 # Origin-destination analyses
 
@@ -90,10 +108,16 @@ To create an OD table, we set up our sources in a tibble called `froms`, our tar
 
 ```r
 library(dplyr)
-froms <- bind_rows(test_data("parliament"), test_data("uottawa"), test_data("cntower"))
-tos <- bind_rows(test_data("cdntirecentre"), test_data("zwicksisland"))
+origins <- bind_rows(test_data("parliament"),
+                   test_data("uottawa"),
+                   test_data("cntower"))
+destinations <- bind_rows(test_data("cdntirecentre"),
+                   test_data("zwicksisland"))
 
-st <- sources_to_targets(froms, tos)
+st <- sources_to_targets(froms = origins,
+                         tos = destinations,
+                         hostname = host,
+                         port = port)
 
 st %>%
   knitr::kable()
@@ -118,10 +142,12 @@ Here we can see the results of calling `od_table()` with the same inputs as befo
 
 
 ```r
-od <- od_table (froms = froms,
+od <- od_table (froms = origins,
                 from_id_col = "name",
-                tos,
-                to_id_col = "name")
+                tos = destinations,
+                to_id_col = "name",
+                hostname = host,
+                port = port)
 
 od %>%
   knitr::kable()
@@ -151,16 +177,19 @@ For example, how far can you get from downtown Kenora on a bicycle using the def
 
 ```r
 # set up our departure point: the University of Ottawa
-from <- test_data("kenora")
+origin <- test_data("kenora")
 
 # generate an isochrone for travel by bicycle
-i <- valhallr::isochrone(from, costing = "bicycle")
+i <- valhallr::isochrone(from = origin,
+                         costing = "bicycle",
+                         hostname = host,
+                         port = port)
 
 # map the isochrone
 map_isochrone(i, method = "ggplot")
 ```
 
-<img src="valhallr-map_isochrone_kenora-1.png" title="plot of chunk map_isochrone_kenora" alt="plot of chunk map_isochrone_kenora" width="100%" />
+<img src="valhallr-map_isochrone_kenora-1.jpeg" title="plot of chunk map_isochrone_kenora" alt="plot of chunk map_isochrone_kenora" width="100%" />
 
 Pretty far, by the looks of it! You can see how the isochrones follow the road network, and so give a reasonably realistic estimate of how far you could travel.
 
@@ -168,13 +197,18 @@ For another example, how far can you drive from Sudbury's Big Nickel in 30, 60, 
 
 
 ```r
-from <- test_data("bignickel")
+origin <- test_data("bignickel")
 
-i <- valhallr::isochrone(from, costing = "auto", contours = c(30,60,90), metric = "min")
+i <- valhallr::isochrone(from = origin,
+                         costing = "auto",
+                         contours = c(30,60,90),
+                         metric = "min",
+                         hostname = host,
+                         port = port)
 
 map_isochrone(i, method = "ggplot")
 ```
 
-<img src="valhallr-map_isochrone_sudbury-1.png" title="plot of chunk map_isochrone_sudbury" alt="plot of chunk map_isochrone_sudbury" width="100%" />
+<img src="valhallr-map_isochrone_sudbury-1.jpeg" title="plot of chunk map_isochrone_sudbury" alt="plot of chunk map_isochrone_sudbury" width="100%" />
 
 Again, quite far! You can see how the algorithm takes the road network and speed limits into account: once you get onto a major highway, the distances increase rapidly.
