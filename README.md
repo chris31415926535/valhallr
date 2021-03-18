@@ -77,7 +77,7 @@ supports an interactive map using **leaflet** or an static map using
 map_trip(t, method = "ggplot")
 ```
 
-<img src="https://raw.githubusercontent.com/chris31415926535/valhallr/master/vignettes/valhallr-map_ottawa_auto-1.png" width="100%" />
+<img src="https://raw.githubusercontent.com/chris31415926535/valhallr/master/vignettes/valhallr-map_ottawa_auto-1.jpeg" width="100%" />
 
 What if we wanted to travel by bicycle instead? We can change our travel
 method from the default, “auto”, using the `costing` parameter. Here we
@@ -217,7 +217,7 @@ i <- valhallr::isochrone(from, costing = "bicycle")
 map_isochrone(i, method = "ggplot")
 ```
 
-<img src="https://raw.githubusercontent.com/chris31415926535/valhallr/master/vignettes/valhallr-map_isochrone_kenora-1.png" width="100%" />
+<img src="https://raw.githubusercontent.com/chris31415926535/valhallr/master/vignettes/valhallr-map_isochrone_kenora-1.jpeg" width="100%" />
 
 Pretty far, by the looks of it\! You can see how the isochrones follow
 the road network, and so give a reasonably realistic estimate of how far
@@ -234,7 +234,7 @@ i <- valhallr::isochrone(from, costing = "auto", contours = c(30,60,90), metric 
 map_isochrone(i, method = "ggplot")
 ```
 
-<img src="https://raw.githubusercontent.com/chris31415926535/valhallr/master/vignettes/valhallr-map_isochrone_sudbury-1.png" width="100%" />
+<img src="https://raw.githubusercontent.com/chris31415926535/valhallr/master/vignettes/valhallr-map_isochrone_sudbury-1.jpeg" width="100%" />
 
 Again, quite far\! You can see how the algorithm takes the road network
 and speed limits into account: once you get onto a major highway, the
