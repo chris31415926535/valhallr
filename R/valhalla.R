@@ -8,6 +8,7 @@
 #' @param dataset The name of a test dataset. By default, and if an unknown input
 #' is given, it returns all values.
 #'
+#' @importFrom magrittr %>%
 #' @return A tibble with one or more location names, latitudes, and longitudes.
 #' @export
 test_data <- function(dataset = NA){

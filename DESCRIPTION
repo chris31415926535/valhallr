@@ -1,14 +1,16 @@
 Package: valhallr
 Type: Package
-Title: A Tidy R Interface to the Valhalla Routing Engine
+Title: A Tidy Interface to the 'Valhalla' Routing Engine
 Version: 0.1.0
 Author: Christopher Belanger
 Maintainer: Christopher Belanger <christopher.a.belanger@gmail.com>
-Description: An R-native interface to the Valhalla routing engine’s APIs for 
-    turn-by-turn routing, isochrones, and origin-destination analyses.
-    Also includes several user-friendly functions for plotting outputs,
-    and strives to follow "tidy" design principles. Please note that this
-    package requires access to a running Valhalla instance.
+Description: An interface to the 'Valhalla' routing engine’s
+    application programming interfaces (APIs) for turn-by-turn routing,
+    isochrones, and origin-destination analyses. Also includes several
+    user-friendly functions for plotting outputs, and strives to follow
+    "tidy" design principles. Please note that this package requires
+    access to a running instance of 'Valhalla', which is open source and
+    can be downloaded from <https://github.com/valhalla/valhalla>.
 License: GPL (>= 3)
 Encoding: UTF-8
 LazyData: true
