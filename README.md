@@ -102,7 +102,7 @@ riverside path and avoids major highways:
 map_trip(t, method = "ggplot")
 ```
 
-<img src="https://raw.githubusercontent.com/chris31415926535/valhallr/master/vignettes/valhallr-map_ottawa_bicycle-1.png" width="100%" />
+<img src="https://raw.githubusercontent.com/chris31415926535/valhallr/master/vignettes/valhallr-map_ottawa_bicycle-1.jpeg" width="100%" />
 
 # Origin-destination analyses
 
