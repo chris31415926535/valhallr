@@ -680,3 +680,40 @@ map_isochrone <- function(isochrone, method = "leaflet") {
   return(output)
 }
 
+
+
+
+#' Convert `sf` objects to **valhallr**-friendly tibbles
+#'
+#' @description This function converts simple feature (sf) POINT objects to tidy
+#' tibbles that you can feed to **valhallr** functions. This is handy if you're
+#' working with a lots of geospatial data and would like to run a set of
+#' locations through, for example, `valhallr::od_table()`.
+#'
+#' @param data A simple feature collection with geometry class POINT.
+#' @param output_crs The desired output coordinate reference system (CRS).
+#' Defaults to WGS84.
+#'
+#' @return A non-sf tibble with new columns `lat` and `lon` containing latitudes
+#'  and longitudes respectively that can be fed into other **valhallr**
+#'  functions like `valhallr::od_table()`.
+#' @export
+sf_to_latlon <- function(data, output_crs = "WGS84"){
+  # input validation: make sure it's an sf object
+  if (!"sf" %in% class(data)) stop ("Input data is not a simple feature object with class sf.")
+  # make sure it doesn't already have lat/lon columns
+  if (("lat" %in% colnames(data)) | "lon" %in% colnames(data)) stop ("Input data already has columns named `lat` and/or `lon`.")
+  # make sure it's all point data
+  if (!(unique(sf::st_geometry_type(data)) == "POINT")) stop ("Input data is not exclusively point data.")
+
+  .coords <- data %>%
+    sf::st_transform(crs = output_crs) %>%
+    sf::st_coordinates() %>%
+    tibble::as_tibble() %>%
+    dplyr::rename(lon = X, lat = Y)
+
+  data %>%
+    sf::st_set_geometry(NULL) %>%
+    dplyr::bind_cols(.coords)
+
+}
