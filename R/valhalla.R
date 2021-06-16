@@ -22,7 +22,9 @@ test_data <- function(dataset = NA){
                               "zwicksisland", 44.153853, -77.387684,
                               "bignickel", 46.473435, -81.033971,
                               "kenora", 49.765876, -94.487444,
-                              "killarney", 46.012289, -81.401437)
+                              "killarney", 46.012289, -81.401437,
+                              "leeds_university", 53.80793, -1.55221,
+                              "leeds_chemic_pub", 53.81436, -1.55292)
 
   result <- tibble::tibble()
 
