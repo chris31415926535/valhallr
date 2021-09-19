@@ -564,6 +564,8 @@ map_trip <- function(trip, method = "leaflet"){
 #' @param min_road_class The minimum road classification Valhalla will consider. Defaults to `residential`.
 #' @param minimum_reachability The minimum number of nodes a candidate network
 #'   needs to have before it is included.
+#' @param costing_options A named list of options provided to the Valhalla API that affect route costing,
+#'   e.g. willingness to travel on highways or through alleys. See API documentation for details.
 #' @param hostname Hostname or IP address of your Valhalla instance. Defaults to "localhost".
 #' @param port The port your Valhalla instance is monitoring. Defaults to 8002.
 #'
@@ -581,7 +583,7 @@ map_trip <- function(trip, method = "leaflet"){
 #' map_isochrone(i)
 #' }
 #' @export
-isochrone <- function(from, costing = "pedestrian", contours = c(5, 10, 15), metric = "min", min_road_class = "residential", minimum_reachability = 500, hostname = "localhost", port = 8002){
+isochrone <- function(from, costing = "pedestrian", contours = c(5, 10, 15), metric = "min", min_road_class = "residential", minimum_reachability = 500, costing_options = list(), hostname = "localhost", port = 8002){
   # see API reference here
   # https://valhalla.readthedocs.io/en/latest/api/isochrone/api-reference/
 
@@ -594,6 +596,12 @@ isochrone <- function(from, costing = "pedestrian", contours = c(5, 10, 15), met
 
   post_data$locations <- dplyr::select(from, "lat", "lon")
   post_data$costing <- costing
+
+  if (costing == "auto") post_data$costing_options$auto = costing_options
+  if (costing == "pedestrian") post_data$costing_options$pedestrian = costing_options
+  if (costing == "bicycle") post_data$costing_options$bicycle = costing_options
+  if (costing == "truck") post_data$costing_options$truck = costing_options
+
   if (metric == "min") post_data$contours <-  tibble::tibble(time = contours)
   if (metric == "km")  post_data$contours <-  tibble::tibble(distance = contours)
 
@@ -679,4 +687,3 @@ map_isochrone <- function(isochrone, method = "leaflet") {
 
   return(output)
 }
-

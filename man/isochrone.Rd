@@ -31,6 +31,9 @@ are supported.}
 \item{minimum_reachability}{The minimum number of nodes a candidate network
 needs to have before it is included.}
 
+\item{costing_options}{A named list of options provided to the Valhalla API that affect route costing,
+e.g. willingness to travel on highways or through alleys. See API documentation for details.}
+
 \item{hostname}{Hostname or IP address of your Valhalla instance. Defaults to "localhost".}
 
 \item{port}{The port your Valhalla instance is monitoring. Defaults to 8002.}
