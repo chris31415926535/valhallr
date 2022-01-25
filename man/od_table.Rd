@@ -13,6 +13,7 @@ od_table(
   batch_size = 100,
   minimum_reachability = 500,
   verbose = FALSE,
+  exclude_polygons = NA,
   hostname = "localhost",
   port = 8002
 )
@@ -41,6 +42,8 @@ needs to have before it is included. Try increasing this value (e.g. to
 
 \item{verbose}{Boolean. Defaults to FALSE. If TRUE, it will provide updates on
 on the batching process (if applicable).}
+
+\item{exclude_polygons}{A tibble or list of tibbles with \code{lat} and \code{lon} columns defining polygons to be avoided.}
 
 \item{hostname}{Hostname or IP address of your Valhalla instance. Defaults to "localhost".}
 

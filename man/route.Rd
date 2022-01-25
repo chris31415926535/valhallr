@@ -14,6 +14,7 @@ route(
   to_search_filter = list(max_road_class = "motorway", min_road_class = "residential"),
   minimum_reachability = 50,
   costing_options = list(),
+  exclude_polygons = NA,
   hostname = "localhost",
   port = 8002
 )
@@ -44,6 +45,8 @@ needs to have before it is included. Try increasing this value (e.g. to
 
 \item{costing_options}{A named list of options provided to the Valhalla API that affect route costing,
 e.g. willingness to travel on highways or through alleys. See API documentation for details.}
+
+\item{exclude_polygons}{A tibble or list of tibbles with \code{lat} and \code{lon} columns defining polygons to be avoided.}
 
 \item{hostname}{Hostname or IP address of your Valhalla instance. Defaults to "localhost".}
 

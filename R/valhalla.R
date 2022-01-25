@@ -1,4 +1,4 @@
-
+.from_id_col <- .to_id_col <- X <- Y <- lat <- lon <- NULL
 
 #' Get Lat/Lon Coordinates for Testing
 #'
@@ -63,6 +63,7 @@ test_data <- function(dataset = NA){
 #'   which is one above the lowest, "service_other"). See API documentation for details.
 #' @param costing_options A named list of options provided to the Valhalla API that affect route costing,
 #'   e.g. willingness to travel on highways or through alleys. See API documentation for details.
+#' @param exclude_polygons A tibble or list of tibbles with `lat` and `lon` columns defining polygons to be avoided.
 #' @param hostname Hostname or IP address of your Valhalla instance. Defaults to "localhost".
 #' @param port The port your Valhalla instance is monitoring. Defaults to 8002.
 #' @return A trip object.
@@ -128,7 +129,7 @@ route <- function(from = NA, to = NA, costing = "auto", unit = "kilometers", fro
 
     post_data$exclude_polygons  <- exclude_polygons %>%
       purrr::map(function(x) {
-        select(x, lon, lat) %>%
+        dplyr::select(x, lon, lat) %>%
           unlist() %>%
           matrix(ncol = 2)
       })
@@ -261,6 +262,7 @@ decode <- function(encoded) {
 #'   which is one above the lowest, "service_other"). See API documentation for details.
 #' @param costing_options A named list of options provided to the Valhalla API that affect route costing,
 #'   e.g. willingness to travel on highways or through alleys. See API documentation for details.
+#' @param exclude_polygons A tibble or list of tibbles with `lat` and `lon` columns defining polygons to be avoided.
 #' @param hostname Hostname or IP address of your Valhalla instance. Defaults to "localhost".
 #' @param port The port your Valhalla instance is monitoring. Defaults to 8002.
 #' @return A tibble showing the trip distances and times from each origin to each destination.
@@ -315,7 +317,7 @@ sources_to_targets <- function(froms, tos, costing = "auto",from_search_filter =
 
     post_data$exclude_polygons  <- exclude_polygons %>%
       purrr::map(function(x) {
-        select(x, lon, lat) %>%
+        dplyr::select(x, lon, lat) %>%
           unlist() %>%
           matrix(ncol = 2)
       })
@@ -386,6 +388,7 @@ sources_to_targets <- function(froms, tos, costing = "auto",from_search_filter =
 #'   500) if Valhalla is getting stuck in small disconnected road networks.
 #' @param verbose Boolean. Defaults to FALSE. If TRUE, it will provide updates on
 #'   on the batching process (if applicable).
+#' @param exclude_polygons A tibble or list of tibbles with `lat` and `lon` columns defining polygons to be avoided.
 #' @param hostname Hostname or IP address of your Valhalla instance. Defaults to "localhost".
 #' @param port The port your Valhalla instance is monitoring. Defaults to 8002.
 #'
@@ -418,8 +421,8 @@ od_table <- function(froms, from_id_col, tos, to_id_col, costing = "auto", batch
 
   # temporarily rename the data columns so they're easier to work with
   # we'll put the names back right at the end
-  froms <- rename(froms, .from_id_col = {{from_id_col}})
-  tos   <- rename(tos, .to_id_col = {{to_id_col}})
+  froms <- dplyr::rename(froms, .from_id_col = {{from_id_col}})
+  tos   <- dplyr::rename(tos, .to_id_col = {{to_id_col}})
 
   # get the human-readable names of the from- and to-data
   from_names <- froms %>%

@@ -1,7 +1,7 @@
 Package: valhallr
 Type: Package
 Title: A Tidy Interface to the 'Valhalla' Routing Engine
-Version: 0.1.0
+Version: 0.1.9000
 Author: Christopher Belanger
 Maintainer: Christopher Belanger <christopher.a.belanger@gmail.com>
 Description: An interface to the 'Valhalla' routing engine’s
