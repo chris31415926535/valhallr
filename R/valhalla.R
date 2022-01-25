@@ -84,7 +84,7 @@ test_data <- function(dataset = NA){
 #'   map_trip(trip, method = "leaflet")
 #'}
 #' @export
-route <- function(from = NA, to = NA, costing = "auto", unit = "kilometers", from_search_filter = list(max_road_class = "motorway", min_road_class = "residential"), to_search_filter = list(max_road_class = "motorway", min_road_class = "residential"),minimum_reachability = 50, costing_options = list(), hostname = "localhost", port = 8002){
+route <- function(from = NA, to = NA, costing = "auto", unit = "kilometers", from_search_filter = list(max_road_class = "motorway", min_road_class = "residential"), to_search_filter = list(max_road_class = "motorway", min_road_class = "residential"),minimum_reachability = 50, costing_options = list(), exclude_polygons = NA, hostname = "localhost", port = 8002){
   # see API reference here
   #https://valhalla.readthedocs.io/en/latest/api/turn-by-turn/api-reference/
 
@@ -108,6 +108,31 @@ route <- function(from = NA, to = NA, costing = "auto", unit = "kilometers", fro
   if (costing == "truck") post_data$costing_options$truck = costing_options
 
   post_data$directions_options$units = unit
+
+  # add polygons to exclude, if we are given any.
+  if (any(!is.na(exclude_polygons))){
+    # if we get any NA inputs throw an error
+    if (any(is.na(exclude_polygons))) warning("NAs supplied to exclude_polygons. Please supply either one tibble or a list of tibbles with columns `lat` and `lon`.")
+
+    # must be in a list, so if it's just one tibble then put it in a list
+    if(tibble::is_tibble(exclude_polygons)) exclude_polygons <- list(exclude_polygons)
+
+    # each polygon must be a tibble with lat and lon columns, make sure that's true
+    names_good <- purrr::map_lgl(exclude_polygons,
+                                 function(x)( "lat" %in% names(x) ) & ("lon" %in% names(x)))
+    if (!all(names_good)) stop ("`exclude_polygons` must be a tibble or list of tibbles with columns named `lat` and `lon`.")
+
+    # set the input data using exclude_polygons. from the API docs, it must be
+    # one or more exterior rings of polygons in the form of nested JSON arrays,
+    # e.g. [[[lon1, lat1], [lon2,lat2]],[[lon1,lat1],[lon2,lat2]]]
+
+    post_data$exclude_polygons  <- exclude_polygons %>%
+      purrr::map(function(x) {
+        select(x, lon, lat) %>%
+          unlist() %>%
+          matrix(ncol = 2)
+      })
+  } # end exclude_polygons processing
 
   post_json <- jsonlite::toJSON(post_data, auto_unbox = TRUE)
 
@@ -250,7 +275,7 @@ decode <- function(encoded) {
 #' st <- sources_to_targets(froms, tos)
 #' }
 #' @export
-sources_to_targets <- function(froms, tos, costing = "auto",from_search_filter = list(max_road_class = "motorway", min_road_class = "residential"), to_search_filter = list(max_road_class = "motorway", min_road_class = "residential"), minimum_reachability = 50, costing_options = list(), hostname = "localhost", port = 8002){
+sources_to_targets <- function(froms, tos, costing = "auto",from_search_filter = list(max_road_class = "motorway", min_road_class = "residential"), to_search_filter = list(max_road_class = "motorway", min_road_class = "residential"), minimum_reachability = 50, costing_options = list(), exclude_polygons = NA, hostname = "localhost", port = 8002){
 
   post_data <- list()
 
@@ -269,6 +294,33 @@ sources_to_targets <- function(froms, tos, costing = "auto",from_search_filter =
   if (costing == "pedestrian") post_data$costing_options$pedestrian = costing_options
   if (costing == "bicycle") post_data$costing_options$bicycle = costing_options
   if (costing == "truck") post_data$costing_options$truck = costing_options
+
+
+  # add polygons to exclude, if we are given any.
+  if (any(!is.na(exclude_polygons))){
+    # if we get any NA inputs throw an error
+    if (any(is.na(exclude_polygons))) warning("NAs supplied to exclude_polygons. Please supply either one tibble or a list of tibbles with columns `lat` and `lon`.")
+
+    # must be in a list, so if it's just one tibble then put it in a list
+    if(tibble::is_tibble(exclude_polygons)) exclude_polygons <- list(exclude_polygons)
+
+    # each polygon must be a tibble with lat and lon columns, make sure that's true
+    names_good <- purrr::map_lgl(exclude_polygons,
+                                 function(x)( "lat" %in% names(x) ) & ("lon" %in% names(x)))
+    if (!all(names_good)) stop ("`exclude_polygons` must be a tibble or list of tibbles with columns named `lat` and `lon`.")
+
+    # set the input data using exclude_polygons. from the API docs, it must be
+    # one or more exterior rings of polygons in the form of nested JSON arrays,
+    # e.g. [[[lon1, lat1], [lon2,lat2]],[[lon1,lat1],[lon2,lat2]]]
+
+    post_data$exclude_polygons  <- exclude_polygons %>%
+      purrr::map(function(x) {
+        select(x, lon, lat) %>%
+          unlist() %>%
+          matrix(ncol = 2)
+      })
+  } # end exclude_polygons processing
+
 
   post_json <- jsonlite::toJSON(post_data, auto_unbox = TRUE)
 
@@ -357,7 +409,7 @@ sources_to_targets <- function(froms, tos, costing = "auto",from_search_filter =
 #'                 minimum_reachability = 500)
 #' }
 #' @export
-od_table <- function(froms, from_id_col, tos, to_id_col, costing = "auto", batch_size = 100, minimum_reachability = 500, verbose = FALSE, hostname = "localhost", port = 8002){
+od_table <- function(froms, from_id_col, tos, to_id_col, costing = "auto", batch_size = 100, minimum_reachability = 500, verbose = FALSE, exclude_polygons = NA, hostname = "localhost", port = 8002){
   # note: got importFrom rlang trick here: https://stackoverflow.com/questions/58026637/no-visible-global-function-definition-for
   from_index <- to_index <- NULL
 
@@ -406,6 +458,7 @@ od_table <- function(froms, from_id_col, tos, to_id_col, costing = "auto", batch
                                        tos = tos,
                                        costing = costing,
                                        minimum_reachability = minimum_reachability,
+                                       exclude_polygons = exclude_polygons,
                                        hostname = hostname,
                                        port = port)
 
