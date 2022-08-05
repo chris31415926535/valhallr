@@ -85,7 +85,11 @@ test_data <- function(dataset = NA){
 #'   map_trip(trip, method = "leaflet")
 #'}
 #' @export
-route <- function(from = NA, to = NA, costing = "auto", unit = "kilometers", from_search_filter = list(max_road_class = "motorway", min_road_class = "residential"), to_search_filter = list(max_road_class = "motorway", min_road_class = "residential"),minimum_reachability = 50, costing_options = list(), exclude_polygons = NA, hostname = "localhost", port = 8002){
+route <- function(from = NA, to = NA, costing = "auto", unit = "kilometers",
+                  from_search_filter = list(max_road_class = "motorway", min_road_class = "residential"),
+                  to_search_filter = list(max_road_class = "motorway", min_road_class = "residential"),
+                  minimum_reachability = 50, costing_options = list(), exclude_polygons = NA,
+                  hostname = "localhost", port = 8002){
   # see API reference here
   #https://valhalla.readthedocs.io/en/latest/api/turn-by-turn/api-reference/
 
@@ -153,6 +157,72 @@ route <- function(from = NA, to = NA, costing = "auto", unit = "kilometers", fro
   return(resp_data[[1]])
 }
 
+#' Map Matching with Valhalla
+#'
+#' This function calls Valhalla's `trace_attributes` API to return a matched series of
+#' OSM ways estimated to represent the route of your trace. Several costing methods are supported, and there are
+#' parameters that let you give custom options to Valhalla. **Please note that this
+#'   function requires access to a running instance of Valhalla.**
+#'
+#' For more details, please check the Valhalla API documentation here:
+#'
+#' * [https://valhalla.readthedocs.io/en/latest/api/map-matching/api-reference/](https://valhalla.readthedocs.io/en/latest/api/map-matching/api-reference/)
+#'
+#' @param shape A tibble containing point locations in `lat` and `lon` columns, and optionally a column with timestamps (for GPS data) for speed estimation.
+#' @param costing The travel costing method. Values "auto", "bicycle", "bus", and "pedestrian" all work.
+#' @param unit Distance measurement units. Defaults to "kilometres".
+#' @param shape_match `shape_match` is an optional string input parameter. It allows some control of the matching algorithm based on the type of input.
+#' @param begin_time 	Begin timestamp for the trace. This is used along with the `durations` so that timestamps can be specified for a trace that is specified using an encoded polyline. Options are "edge_walk", "map_snap", and "walk_or_snap". "walk_or_snap" is the default option. See API documentation for more details.
+#' @param durations 	List of durations (seconds) between each successive pair of input trace points. This allows trace points to be supplied as an encoded polyline and timestamps to be created by using this list of "delta" times along with the `begin_time` of the trace.
+#' @param use_timestamps A boolean value indicating whether the input timestamps or durations should be used when computing elapsed time at each edge along the matched path. If true, timestamps are used. If false (default), internal costing is applied to compute elapsed times.
+#' @param trace_options A named list of options provided to the Valhalla API that affect map matching
+#'   e.g., search radius. See API documentation for details.
+#' @param hostname Hostname or IP address of your Valhalla instance. Defaults to "localhost".
+#' @param port The port your Valhalla instance is monitoring. Defaults to 8002.
+#'
+#' @return A list with resulting objects from the trace_attributes API. See [documentation](https://valhalla.readthedocs.io/en/latest/api/map-matching/api-reference/#outputs-of-trace_attributes) for more details.
+#'
+#' @export
+trace_attributes <- function(
+  shape = tibble::tibble(lon = numeric(0), lat = numeric(0)),
+  costing = "auto", unit = "kilometers", shape_match = "walk_or_snap",
+  begin_time = NULL, durations = NULL, use_timestamps = FALSE,
+  trace_options = list(),
+  hostname = "localhost", port = 8002){
+  # see API reference here
+  #https://valhalla.readthedocs.io/en/latest/api/map-matching/api-reference/
+
+  post_list <- list(
+    shape = shape,
+    begin_time = begin_time,
+    durations = durations,
+    use_timestamps = use_timestamps,
+    trace_options = trace_options,
+    shape_match = shape_match,
+    costing = costing,
+    direction_options = list(
+      unit = unit
+    )
+  )
+
+  post_json <- jsonlite::toJSON(post_list, auto_unbox = TRUE)
+
+  url <- paste0("http://",hostname,":",port,"/trace_attributes")
+  resp <- httr::POST(url = url,
+                     body = post_json,
+                     httr::user_agent("https://github.com/chris31415926535/valhallr"))
+
+  if (httr::http_type(resp) != "application/json") stop ("API did not return json.", call. = FALSE)
+  if (httr::http_error(resp)){
+    message("Error: API call returned error. Returning API response for debugging.")
+    return(resp)
+  }
+
+  resp_data <- jsonlite::fromJSON(httr::content(resp, type = "text", encoding = "UTF-8"))
+
+  return(resp_data)
+
+}
 
 
 #' Decode Valhalla Route Shape
@@ -222,13 +292,6 @@ decode <- function(encoded) {
 
   return (decoded)
 }
-
-
-
-
-
-
-
 
 #' Source-to-Targets Origin/Destination Matrices with Valhalla
 #'
